@@ -231,43 +231,72 @@ body {
 
 /* Icon Size Variations */
 .collections-list.icon-size-small .collection-item {
-    height: 100px;
-}
-
-.collections-list.icon-size-medium .collection-item {
     height: 130px;
 }
 
-.collections-list.icon-size-large .collection-item {
+.collections-list.icon-size-medium .collection-item {
     height: 160px;
 }
 
-.collections-list.icon-size-small {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+.collections-list.icon-size-large .collection-item {
+    height: 600px;
+    flex-direction: column;
+    position: relative;
 }
 
-.collections-list.icon-size-medium {
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-}
-
+.collections-list.icon-size-small,
+.collections-list.icon-size-medium,
 .collections-list.icon-size-large {
     grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
 }
 
 /* Thumbnail size variations */
 .collections-list.icon-size-small .collection-thumbnail {
-    width: 120px;
-    height: 100px;
-}
-
-.collections-list.icon-size-medium .collection-thumbnail {
     width: 160px;
     height: 130px;
 }
 
-.collections-list.icon-size-large .collection-thumbnail {
+.collections-list.icon-size-medium .collection-thumbnail {
     width: 200px;
     height: 160px;
+}
+
+.collections-list.icon-size-large .collection-thumbnail {
+    width: 100%;
+    height: 540px;
+    order: 2;
+}
+
+.collections-list.icon-size-large .collection-header {
+    height: 60px;
+    order: 1;
+    padding: 8px 12px;
+    text-align: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.collections-list.icon-size-large .collection-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.collections-list.icon-size-large .collection-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.collections-list.icon-size-large .collection-count {
+    font-size: 0.75rem;
+}
+
+.collections-list.icon-size-large .collection-toggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
 }
 
 .collection-item {

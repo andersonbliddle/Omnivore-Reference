@@ -466,24 +466,47 @@ class DrawingReferenceApp {
                 `<img src="${this.formatImagePath(firstImage.path)}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">` :
                 '<div class="no-image">No images</div>';
 
-            return `
-                <div class="collection-item ${collection.enabled ? 'active' : ''}">
-                    <div class="collection-header">
+            if (this.iconSize === 'large') {
+                // Large layout: vertical with checkbox on top-right
+                return `
+                    <div class="collection-item ${collection.enabled ? 'active' : ''}">
                         <div class="collection-toggle">
                             <input type="checkbox" ${collection.enabled ? 'checked' : ''}
                                    onchange="app.toggleCollection('${collection.id}')"
                                    data-collection-id="${collection.id}">
                         </div>
-                        <div class="collection-info">
-                            <div class="collection-name">${collection.name}</div>
-                            <div class="collection-count">${collection.images.length} images</div>
+                        <div class="collection-header">
+                            <div class="collection-info">
+                                <div class="collection-name">${collection.name}</div>
+                                <div class="collection-count">${collection.images.length} images</div>
+                            </div>
+                        </div>
+                        <div class="collection-thumbnail">
+                            ${thumbnailHtml}
                         </div>
                     </div>
-                    <div class="collection-thumbnail">
-                        ${thumbnailHtml}
+                `;
+            } else {
+                // Small and medium layouts: horizontal
+                return `
+                    <div class="collection-item ${collection.enabled ? 'active' : ''}">
+                        <div class="collection-header">
+                            <div class="collection-toggle">
+                                <input type="checkbox" ${collection.enabled ? 'checked' : ''}
+                                       onchange="app.toggleCollection('${collection.id}')"
+                                       data-collection-id="${collection.id}">
+                            </div>
+                            <div class="collection-info">
+                                <div class="collection-name">${collection.name}</div>
+                                <div class="collection-count">${collection.images.length} images</div>
+                            </div>
+                        </div>
+                        <div class="collection-thumbnail">
+                            ${thumbnailHtml}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
         }).join('');
 
         this.updateDeleteButton();
