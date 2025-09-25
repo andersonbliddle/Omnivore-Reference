@@ -19,5 +19,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Individual thumbnail loading
   getThumbnail: (imagePath) => ipcRenderer.invoke('get-thumbnail', imagePath),
 
+  // Clear memory cache
+  clearMemoryCache: () => ipcRenderer.invoke('clear-memory-cache'),
+
+  // Menu event handling
+  onMenuEvent: (eventName, callback) => {
+    ipcRenderer.on(eventName, (event, ...args) => callback(...args));
+  },
+
   // No keyboard shortcuts - button controls only
 });

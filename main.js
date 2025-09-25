@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const sharp = require('sharp');
@@ -52,7 +52,7 @@ async function ensureThumbnailCacheDir() {
 }
 
 // Thumbnail version - increment this when changing thumbnail parameters
-const THUMBNAIL_VERSION = 'v4_200x150_50q';
+const THUMBNAIL_VERSION = 'v6_200x150_50q';
 
 // Generate a hash for the image file to use as thumbnail filename
 function generateThumbnailHash(imagePath, modifiedTime) {
@@ -163,6 +163,102 @@ async function getThumbnail(imagePath) {
   }
 }
 
+// Create application menu
+function createMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Add Directory',
+          accelerator: 'CmdOrCtrl+O',
+          click: async () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu-add-directory');
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          role: 'quit'
+        }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Tools',
+      submenu: [
+        {
+          label: 'Clear Cache',
+          click: async () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu-clear-cache');
+            }
+          }
+        },
+        {
+          label: 'Cleanup Old Thumbnails',
+          click: async () => {
+            try {
+              await cleanupThumbnails();
+              if (mainWindow) {
+                mainWindow.webContents.send('menu-show-message', 'Old thumbnails cleaned up successfully.');
+              }
+            } catch (error) {
+              console.error('Error cleaning thumbnails:', error);
+            }
+          }
+        }
+      ]
+    }
+  ];
+
+  // macOS menu adjustments
+  if (process.platform === 'darwin') {
+    template.unshift({
+      label: app.getName(),
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    });
+  }
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 async function createWindow() {
   // Ensure thumbnail cache directory exists
   await ensureThumbnailCacheDir();
@@ -171,7 +267,7 @@ async function createWindow() {
   cleanupThumbnails();
 
   const settings = await loadSettings();
-  
+
   mainWindow = new BrowserWindow({
     width: settings.windowBounds.width,
     height: settings.windowBounds.height,
@@ -187,6 +283,9 @@ async function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+
+  // Create application menu
+  createMenu();
 
   // Save window bounds when moved or resized
   mainWindow.on('moved', saveWindowBounds);
@@ -394,5 +493,18 @@ ipcMain.handle('get-thumbnail', async (event, imagePath) => {
   } catch (error) {
     console.error('Error getting thumbnail:', error);
     return null;
+  }
+});
+
+// Clear memory cache
+ipcMain.handle('clear-memory-cache', async () => {
+  try {
+    const cacheSize = thumbnailCache.size;
+    thumbnailCache.clear();
+    console.log(`Cleared ${cacheSize} thumbnails from memory cache`);
+    return cacheSize;
+  } catch (error) {
+    console.error('Error clearing memory cache:', error);
+    return 0;
   }
 });

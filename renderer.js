@@ -28,6 +28,7 @@ class DrawingReferenceApp {
 
         this.initializeElements();
         this.bindEvents();
+        this.bindMenuEvents();
         this.loadSettings();
     }
 
@@ -187,6 +188,23 @@ class DrawingReferenceApp {
                 this.resetZoom();
             }
         });
+    }
+
+    bindMenuEvents() {
+        // Listen for menu events from main process
+        if (window.electronAPI && window.electronAPI.onMenuEvent) {
+            window.electronAPI.onMenuEvent('menu-clear-cache', () => {
+                this.clearCache();
+            });
+
+            window.electronAPI.onMenuEvent('menu-add-directory', () => {
+                this.addCollection();
+            });
+
+            window.electronAPI.onMenuEvent('menu-show-message', (message) => {
+                alert(message);
+            });
+        }
     }
 
     async toggleFullscreen() {
@@ -1237,6 +1255,30 @@ class DrawingReferenceApp {
     clearTagFilters() {
         this.selectedTags.clear();
         this.renderCollections();
+    }
+
+    async clearCache() {
+        try {
+            // Clear memory cache
+            const clearedCount = await window.electronAPI.clearMemoryCache();
+
+            // Clear any collection thumbnail data
+            this.collections.forEach(collection => {
+                if (collection.previews) {
+                    collection.previews.forEach(preview => {
+                        preview.thumbnailData = null;
+                    });
+                }
+            });
+
+            // Re-render collections to show placeholders
+            this.renderCollections();
+
+            alert(`Cache cleared! Removed ${clearedCount} thumbnails from memory. Thumbnails will regenerate as needed.`);
+        } catch (error) {
+            console.error('Error clearing cache:', error);
+            alert('Error clearing cache. Check console for details.');
+        }
     }
 }
 
