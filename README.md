@@ -4,7 +4,7 @@ A professional timed drawing reference app built with Electron for artists to pr
 
 ## Prerequisites
 
-**Install Node.js and npm**: [Node.js Download Link]
+**Install Node.js and npm**: https://nodejs.org/en/download/
 
 ## Build Instructions
 
