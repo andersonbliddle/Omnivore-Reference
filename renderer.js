@@ -1335,6 +1335,9 @@ class DrawingReferenceApp {
         const collection = this.collections.find(c => c.id === this.currentContextCollectionId);
         if (!collection) return;
 
+        // Store the current input value before refreshing
+        const currentInputValue = this.newTagInput ? this.newTagInput.value : '';
+
         // Show all tags in a single pool with selected/unselected styling
         const allTagsArray = [...this.allTags].sort();
         this.currentTagsList.innerHTML = allTagsArray.length > 0 ?
@@ -1348,36 +1351,45 @@ class DrawingReferenceApp {
         // Hide the available tags section since we're using a single pool
         this.availableTagsList.innerHTML = '';
 
-        // Ensure the input element still has its event listener
+        // Re-get the input element reference after innerHTML changes and restore its value
+        this.newTagInput = document.getElementById('new-tag-input');
+        if (this.newTagInput) {
+            this.newTagInput.value = currentInputValue;
+        }
+
+        // Ensure the input element has its event listener after DOM changes
         this.ensureTagInputEventListener();
     }
 
     reinitializeTagElements() {
-        // Re-get all tag-related element references
+        // Re-get all tag-related element references (both tooltip and mass tag inputs)
         this.newTagInput = document.getElementById('new-tag-input');
+        this.massAddTagInput = document.getElementById('mass-add-tag-input');
         this.addTagBtn = document.getElementById('add-tag-btn');
         this.tagContextMenu = document.getElementById('tag-context-menu');
         this.currentTagsList = document.getElementById('current-tags-list');
 
-        // Re-bind the tag input event listener
+        // Re-bind both input event listeners to ensure they work after DOM changes
         this.ensureTagInputEventListener();
         this.ensureMassTagInputEventListener();
 
         console.log('Reinitialized tag elements:', {
             newTagInput: !!this.newTagInput,
+            massAddTagInput: !!this.massAddTagInput,
             addTagBtn: !!this.addTagBtn,
             tagContextMenu: !!this.tagContextMenu
         });
     }
 
     ensureMassTagInputEventListener() {
-        // Always get fresh element reference
-        const massAddTagInput = document.getElementById('mass-add-tag-input');
+        // Always get fresh element reference and update stored reference
+        this.massAddTagInput = document.getElementById('mass-add-tag-input');
 
-        if (massAddTagInput) {
-            // Remove existing listener first to avoid duplicates
-            massAddTagInput.removeEventListener('keypress', this.massTagInputHandler);
-            // Re-add the listener
+        if (this.massAddTagInput) {
+            // Remove existing listener first to avoid duplicates (safe to call even if not attached)
+            this.massAddTagInput.removeEventListener('keypress', this.massTagInputHandler);
+
+            // Ensure we have the handler function
             if (!this.massTagInputHandler) {
                 this.massTagInputHandler = (e) => {
                     if (e.key === 'Enter') {
@@ -1385,21 +1397,24 @@ class DrawingReferenceApp {
                     }
                 };
             }
-            massAddTagInput.addEventListener('keypress', this.massTagInputHandler);
+
+            // Re-add the listener to the fresh element
+            this.massAddTagInput.addEventListener('keypress', this.massTagInputHandler);
             console.log('Mass tag input event listener re-bound successfully');
         } else {
-            console.warn('massAddTagInput element not found');
+            console.warn('massAddTagInput element not found - dialog may be closed');
         }
     }
 
     ensureTagInputEventListener() {
-        // Always get fresh element reference
-        const newTagInput = document.getElementById('new-tag-input');
+        // Always get fresh element reference and update stored reference
+        this.newTagInput = document.getElementById('new-tag-input');
 
-        if (newTagInput) {
-            // Remove existing listener first to avoid duplicates
-            newTagInput.removeEventListener('keypress', this.tagInputHandler);
-            // Re-add the listener
+        if (this.newTagInput) {
+            // Remove existing listener first to avoid duplicates (safe to call even if not attached)
+            this.newTagInput.removeEventListener('keypress', this.tagInputHandler);
+
+            // Ensure we have the handler function
             if (!this.tagInputHandler) {
                 this.tagInputHandler = (e) => {
                     if (e.key === 'Enter') {
@@ -1407,10 +1422,12 @@ class DrawingReferenceApp {
                     }
                 };
             }
-            newTagInput.addEventListener('keypress', this.tagInputHandler);
+
+            // Re-add the listener to the fresh element
+            this.newTagInput.addEventListener('keypress', this.tagInputHandler);
             console.log('Individual tag input event listener re-bound successfully');
         } else {
-            console.warn('newTagInput element not found - may have been destroyed');
+            console.warn('newTagInput element not found - tooltip may be closed');
         }
     }
 
@@ -1627,6 +1644,11 @@ class DrawingReferenceApp {
             return;
         }
 
+        // Store tooltip state before DOM operations
+        const wasTooltipOpen = this.tagContextMenu.style.display === 'block';
+        const tooltipCollectionId = this.currentContextCollectionId;
+        const tooltipInputValue = this.newTagInput ? this.newTagInput.value : '';
+
         let addedCount = 0;
         selectedCollections.forEach(collection => {
             if (!collection.tags.includes(tagName)) {
@@ -1644,6 +1666,18 @@ class DrawingReferenceApp {
 
         this.hideMassAddTagDialog();
 
+        // Restore tooltip state if it was open
+        if (wasTooltipOpen && tooltipCollectionId) {
+            setTimeout(() => {
+                this.currentContextCollectionId = tooltipCollectionId;
+                this.refreshTagContextMenu();
+                // Restore input value if it had one
+                if (tooltipInputValue && this.newTagInput) {
+                    this.newTagInput.value = tooltipInputValue;
+                }
+            }, 50);
+        }
+
         if (addedCount > 0) {
             const message = addedCount === selectedCollections.length ?
                 `Added "${tagName}" to all ${selectedCollections.length} selected collection(s).` :
@@ -1653,8 +1687,10 @@ class DrawingReferenceApp {
             alert(`All selected collections already have the tag "${tagName}".`);
         }
 
-        // Ensure individual tag input is working after mass operations
-        this.reinitializeTagElements();
+        // Reload the application to ensure clean state after mass operations
+        setTimeout(() => {
+            location.reload();
+        }, 100);
     }
 
     removeTagFromSelected(tagName) {
@@ -1664,6 +1700,11 @@ class DrawingReferenceApp {
             this.hideMassRemoveTagDialog();
             return;
         }
+
+        // Store tooltip state before DOM operations
+        const wasTooltipOpen = this.tagContextMenu.style.display === 'block';
+        const tooltipCollectionId = this.currentContextCollectionId;
+        const tooltipInputValue = this.newTagInput ? this.newTagInput.value : '';
 
         let removedCount = 0;
         selectedCollections.forEach(collection => {
@@ -1680,14 +1721,28 @@ class DrawingReferenceApp {
 
         this.hideMassRemoveTagDialog();
 
+        // Restore tooltip state if it was open
+        if (wasTooltipOpen && tooltipCollectionId) {
+            setTimeout(() => {
+                this.currentContextCollectionId = tooltipCollectionId;
+                this.refreshTagContextMenu();
+                // Restore input value if it had one
+                if (tooltipInputValue && this.newTagInput) {
+                    this.newTagInput.value = tooltipInputValue;
+                }
+            }, 50);
+        }
+
         if (removedCount > 0) {
             alert(`Removed "${tagName}" from ${removedCount} collection(s).`);
         } else {
             alert(`None of the selected collections had the tag "${tagName}".`);
         }
 
-        // Ensure individual tag input is working after mass operations
-        this.reinitializeTagElements();
+        // Reload the application to ensure clean state after mass operations
+        setTimeout(() => {
+            location.reload();
+        }, 100);
     }
 }
 
