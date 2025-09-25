@@ -1,0 +1,643 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    background: #1a1a1a;
+    color: #ffffff;
+    overflow: hidden;
+}
+
+.app-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header Controls */
+.controls-header {
+    background: #2d2d2d;
+    padding: 15px 20px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.app-title h1 {
+    color: #4a9eff;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.control-group label {
+    font-size: 0.85rem;
+    color: #ccc;
+}
+
+.input-with-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.control-group input {
+    padding: 8px 12px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #333;
+    color: #fff;
+    width: 120px;
+}
+
+.control-group input:focus {
+    outline: none;
+    border-color: #4a9eff;
+}
+
+.quick-buttons {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.quick-btn {
+    padding: 4px 8px;
+    border: 1px solid #666;
+    border-radius: 4px;
+    background: #444;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+    min-width: 32px;
+}
+
+.quick-btn:hover {
+    background: #555;
+    border-color: #4a9eff;
+    color: #fff;
+}
+
+.quick-btn:active {
+    background: #4a9eff;
+    color: #fff;
+}
+
+/* Buttons */
+.primary-btn, .secondary-btn, .add-btn, .remove-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.primary-btn {
+    background: #4a9eff;
+    color: white;
+}
+
+.primary-btn:hover:not(:disabled) {
+    background: #357abd;
+}
+
+.secondary-btn {
+    background: #555;
+    color: white;
+}
+
+.secondary-btn:hover:not(:disabled) {
+    background: #666;
+}
+
+.add-btn {
+    background: #28a745;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.add-btn:hover {
+    background: #218838;
+}
+
+/* Removed - now defined with collection styles above */
+
+.primary-btn:disabled, .secondary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Collections Section */
+.collections-section {
+    background: #252525;
+    padding: 15px 20px;
+    border-bottom: 1px solid #444;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.collections-list {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.collections-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.collections-header h2 {
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+/* Moved to the flexbox collections-list above */
+
+.collection-item {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 80px;
+}
+
+.collection-item.active {
+    border-color: #4a9eff;
+    background: #1a3a5c;
+}
+
+.collection-header {
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.collection-toggle input[type="checkbox"] {
+    transform: scale(1.2);
+}
+
+.collection-info {
+    flex: 1;
+}
+
+.collection-name {
+    font-weight: 500;
+    margin-bottom: 2px;
+    font-size: 0.9rem;
+}
+
+.collection-count {
+    font-size: 0.75rem;
+    color: #aaa;
+}
+
+
+.floating-delete-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    transition: all 0.2s ease;
+    z-index: 1000;
+}
+
+.floating-delete-btn:hover {
+    background: #c82333;
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Removed - now using single checkbox for both enable/disable and selection */
+
+.no-collections {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+    width: 100%;
+}
+
+/* Main Drawing Area */
+.drawing-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.image-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: #1a1a1a;
+    padding: 20px;
+    box-sizing: border-box;
+    min-height: 0; /* Important for flex child */
+    overflow: hidden;
+}
+
+.image-container img {
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 200px); /* Account for header and footer */
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    display: block;
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.placeholder {
+    text-align: center;
+    color: #666;
+    max-width: 400px;
+}
+
+.placeholder h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #888;
+}
+
+.placeholder p {
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.keyboard-hints {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: #777;
+}
+
+
+/* Session Overlay */
+.session-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px;
+    pointer-events: none;
+}
+
+.session-countdown {
+    background: rgba(26, 26, 26, 0.9);
+    padding: 12px 20px;
+    border-radius: 8px;
+    pointer-events: auto;
+}
+
+.session-countdown span {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #4a9eff;
+}
+
+.session-countdown span.warning {
+    color: #ffa500;
+}
+
+.session-countdown span.danger {
+    color: #ff4757;
+}
+
+.session-controls {
+    display: flex;
+    gap: 12px;
+    background: rgba(26, 26, 26, 0.9);
+    padding: 12px 16px;
+    border-radius: 8px;
+    pointer-events: auto;
+}
+
+.session-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #555;
+    color: white;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.session-btn:hover {
+    background: #666;
+}
+
+.session-btn.primary {
+    background: #4a9eff;
+}
+
+.session-btn.primary:hover {
+    background: #357abd;
+}
+
+.session-btn.danger {
+    background: #dc3545;
+}
+
+.session-btn.danger:hover {
+    background: #c82333;
+}
+
+.session-progress {
+    background: rgba(26, 26, 26, 0.9);
+    padding: 12px 20px;
+    border-radius: 8px;
+    pointer-events: auto;
+    text-align: center;
+}
+
+.session-progress span {
+    font-size: 1rem;
+    color: #ccc;
+    font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .controls-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .timer-controls {
+        justify-content: center;
+    }
+    
+    .control-group input {
+        width: 100px;
+    }
+    
+    .quick-btn {
+        padding: 3px 6px;
+        font-size: 0.7rem;
+        min-width: 28px;
+    }
+    
+    .floating-delete-btn {
+        bottom: 15px;
+        right: 15px;
+        padding: 10px 16px;
+        font-size: 0.8rem;
+    }
+    
+    .collections-list {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+    }
+    
+    .collection-item {
+        height: 60px;
+    }
+    
+    .collection-header {
+        padding: 10px 12px;
+    }
+    
+    
+    
+    .session-overlay {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        padding: 15px;
+    }
+    
+    .session-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .session-btn {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .image-container {
+        padding: 10px;
+    }
+    
+    .image-container img {
+        max-width: calc(100vw - 20px);
+        max-height: calc(100vh - 180px);
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .image-container {
+        padding: 5px;
+    }
+    
+    .image-container img {
+        max-width: calc(100vw - 10px);
+        max-height: calc(100vh - 160px);
+    }
+    
+    .controls-header {
+        padding: 10px;
+    }
+    
+    .collections-section {
+        padding: 10px;
+    }
+    
+    .collections-list {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .collection-item {
+        height: 50px;
+    }
+    
+    .collection-header {
+        padding: 8px 10px;
+    }
+    
+    .collection-name {
+        font-size: 0.8rem;
+    }
+    
+}
+
+/* Very small height windows */
+@media (max-height: 600px) {
+    .image-container {
+        padding: 10px;
+    }
+    
+    .image-container img {
+        max-width: calc(100vw - 20px);
+        max-height: calc(100vh - 160px);
+    }
+    
+    .collections-section {
+        max-height: 120px;
+    }
+}
+
+/* Loading State */
+.loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+}
+
+/* Fullscreen styles */
+body:-webkit-full-screen {
+    background: #000;
+}
+
+body:-webkit-full-screen .controls-header,
+body:-webkit-full-screen .collections-section {
+    display: none;
+}
+
+
+body:-webkit-full-screen .drawing-area {
+    height: 100vh;
+}
+
+body:-webkit-full-screen .image-container {
+    padding: 20px;
+    border-radius: 0;
+}
+
+body:-webkit-full-screen .image-container img {
+    border-radius: 0;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
+    width: auto;
+    height: auto;
+}
+
+/* Mozilla fullscreen */
+body:-moz-full-screen {
+    background: #000;
+}
+
+body:-moz-full-screen .controls-header,
+body:-moz-full-screen .collections-section {
+    display: none;
+}
+
+
+body:-moz-full-screen .drawing-area {
+    height: 100vh;
+}
+
+body:-moz-full-screen .image-container {
+    padding: 20px;
+    border-radius: 0;
+}
+
+body:-moz-full-screen .image-container img {
+    border-radius: 0;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
+    width: auto;
+    height: auto;
+}
+
+/* Standard fullscreen */
+body:fullscreen {
+    background: #000;
+}
+
+body:fullscreen .controls-header,
+body:fullscreen .collections-section {
+    display: none;
+}
+
+
+body:fullscreen .drawing-area {
+    height: 100vh;
+}
+
+body:fullscreen .image-container {
+    padding: 20px;
+    border-radius: 0;
+}
+
+body:fullscreen .image-container img {
+    border-radius: 0;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
+    width: auto;
+    height: auto;
+}
+
+/* Animation for image transitions */
+.image-container.transitioning img {
+    opacity: 0.7;
+    transform: scale(0.95);
+    transition: all 0.3s ease;
+}
+
+.image-container img {
+    transition: all 0.3s ease;
+}

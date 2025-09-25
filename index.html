@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawing Reference App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Controls -->
+        <header class="controls-header">
+            <div class="app-title">
+                <h1>Drawing Reference</h1>
+            </div>
+            
+            <div class="timer-controls">
+                <div class="control-group">
+                    <label for="timer-duration">Timer (seconds):</label>
+                    <div class="input-with-buttons">
+                        <input type="number" id="timer-duration" min="5" max="3600" value="60">
+                        <div class="quick-buttons">
+                            <button type="button" class="quick-btn" data-timer="30">30s</button>
+                            <button type="button" class="quick-btn" data-timer="60">1m</button>
+                            <button type="button" class="quick-btn" data-timer="120">2m</button>
+                            <button type="button" class="quick-btn" data-timer="300">5m</button>
+                            <button type="button" class="quick-btn" data-timer="600">10m</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="session-length">Images per session:</label>
+                    <div class="input-with-buttons">
+                        <input type="number" id="session-length" min="1" max="1000" value="10">
+                        <div class="quick-buttons">
+                            <button type="button" class="quick-btn" data-session="5">5</button>
+                            <button type="button" class="quick-btn" data-session="10">10</button>
+                            <button type="button" class="quick-btn" data-session="20">20</button>
+                            <button type="button" class="quick-btn" data-session="50">50</button>
+                            <button type="button" class="quick-btn" data-session="100">100</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <button id="start-session" class="primary-btn">Start Session</button>
+                    <button id="pause-session" class="secondary-btn" disabled>Pause</button>
+                    <button id="stop-session" class="secondary-btn" disabled>Stop</button>
+                    <button id="fullscreen-btn" class="secondary-btn">Fullscreen</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Collections Management -->
+        <section class="collections-section">
+            <div class="collections-header">
+                <h2>Image Collections</h2>
+                <div class="header-buttons">
+                    <button id="add-collection" class="add-btn">Add Directory</button>
+                </div>
+            </div>
+            
+            <div class="collections-list" id="collections-list">
+                <div class="no-collections">
+                    <p>No image collections added yet. Click "Add Directory" to get started.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Drawing Area -->
+        <main class="drawing-area">
+            <!-- Session Controls Overlay -->
+            <div class="session-overlay" id="session-overlay" style="display: none;">
+                <div class="session-countdown">
+                    <span id="countdown-timer">--:--</span>
+                </div>
+                <div class="session-controls">
+                    <button id="prev-image" class="session-btn">← Previous</button>
+                    <button id="pause-resume" class="session-btn primary">Pause</button>
+                    <button id="next-image" class="session-btn">Next →</button>
+                    <button id="end-session" class="session-btn danger">End Session</button>
+                </div>
+                <div class="session-progress">
+                    <span id="session-counter">1 / 10</span>
+                </div>
+            </div>
+            
+            <div class="image-container" id="image-container">
+            
+        </main>
+        
+        <!-- Floating Delete Button -->
+        <button id="delete-selected" class="floating-delete-btn" style="display: none;">Delete Selected Collections</button>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
