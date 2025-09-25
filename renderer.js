@@ -7,6 +7,8 @@ class DrawingReferenceApp {
         this.sessionImages = [];
         this.isPaused = false;
         this.settings = {};
+        this.allTags = new Set(); // Global tag bank
+        this.selectedTags = new Set(); // Currently filtered tags
         
         // Zoom and pan state (persistent during session)
         this.zoom = 1;
@@ -55,6 +57,19 @@ class DrawingReferenceApp {
         this.sessionCounterEl = document.getElementById('session-counter');
         this.deleteSelectedBtn = document.getElementById('delete-selected');
         this.reorderBtn = document.getElementById('reorder-collections');
+        this.selectAllBtn = document.getElementById('select-all');
+        this.deselectAllBtn = document.getElementById('deselect-all');
+
+        // Tag-related elements
+        this.tagContextMenu = document.getElementById('tag-context-menu');
+        this.currentTagsList = document.getElementById('current-tags-list');
+        this.availableTagsList = document.getElementById('available-tags-list');
+        this.newTagInput = document.getElementById('new-tag-input');
+        this.addTagBtn = document.getElementById('add-tag-btn');
+        this.closeTagMenuBtn = document.getElementById('close-tag-menu');
+        this.tagFilters = document.getElementById('tag-filters');
+        this.clearFiltersBtn = document.getElementById('clear-filters');
+        this.currentContextCollectionId = null;
 
         // Icon size controls
         this.iconSizeButtons = document.querySelectorAll('.icon-size-btn');
@@ -68,6 +83,25 @@ class DrawingReferenceApp {
         this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
         this.deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedCollections());
         this.reorderBtn.addEventListener('click', () => this.toggleReorderMode());
+        this.selectAllBtn.addEventListener('click', () => this.selectAllCollections());
+        this.deselectAllBtn.addEventListener('click', () => this.deselectAllCollections());
+
+        // Tag management events
+        this.addTagBtn.addEventListener('click', () => this.addNewTag());
+        this.closeTagMenuBtn.addEventListener('click', () => this.hideTagContextMenu());
+        this.clearFiltersBtn.addEventListener('click', () => this.clearTagFilters());
+        this.newTagInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.addNewTag();
+            }
+        });
+
+        // Click outside to close context menu
+        document.addEventListener('click', (e) => {
+            if (!this.tagContextMenu.contains(e.target)) {
+                this.hideTagContextMenu();
+            }
+        });
 
         // Icon size controls
         this.iconSizeButtons.forEach(btn => {
@@ -234,6 +268,13 @@ class DrawingReferenceApp {
                 
                 // Restore collections
                 this.collections = this.settings.collections || [];
+                // Ensure all collections have tags array (backward compatibility)
+                this.collections.forEach(collection => {
+                    if (!collection.tags) {
+                        collection.tags = [];
+                    }
+                });
+                this.rebuildTagBank();
                 this.renderCollections();
                 
                 // Restore UI settings
@@ -302,7 +343,8 @@ class DrawingReferenceApp {
             path: directoryPath,
             images: result.images,
             previews: result.previews,
-            enabled: true
+            enabled: true,
+            tags: [] // Initialize with empty tags array
         };
 
         this.collections.push(collection);
@@ -335,7 +377,8 @@ class DrawingReferenceApp {
                         path: directoryPath,
                         images: result.images,
                         previews: result.previews,
-                        enabled: true
+                        enabled: true,
+                        tags: [] // Initialize with empty tags array
                     };
 
                     this.collections.push(collection);
@@ -468,24 +511,39 @@ class DrawingReferenceApp {
                     <p>No image collections added yet. Click "Add Directory" to get started.</p>
                 </div>
             `;
+            this.renderTagFilters();
             return;
         }
 
-        this.collectionsListEl.innerHTML = this.collections.map(collection => {
-            const firstImage = collection.images && collection.images.length > 0 ? collection.images[0] : null;
-            const thumbnailHtml = firstImage ?
-                `<img src="${this.formatImagePath(firstImage.path)}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">` :
+        // Filter collections by selected tags if any
+        let filteredCollections = this.collections;
+        if (this.selectedTags.size > 0) {
+            filteredCollections = this.collections.filter(collection =>
+                [...this.selectedTags].every(tag => collection.tags.includes(tag))
+            );
+        }
+
+        this.collectionsListEl.innerHTML = filteredCollections.map(collection => {
+            const firstPreview = collection.previews && collection.previews.length > 0 ? collection.previews[0] : null;
+            const thumbnailHtml = firstPreview ?
+                `<img src="${this.formatImagePath(firstPreview.thumbnailPath || firstPreview.path)}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">` :
                 '<div class="no-image">No images</div>';
+
+            const tagsHtml = collection.tags && collection.tags.length > 0 ?
+                `<div class="collection-tags">${collection.tags.map(tag => `<span class="tag-small">${tag}</span>`).join('')}</div>` :
+                '<div class="collection-tags no-tags">Right-click to add tags</div>';
 
             if (this.iconSize === 'large') {
                 // Large layout: vertical, full card clickable
                 return `
                     <div class="collection-item ${collection.enabled ? 'active' : ''}"
                          onclick="app.toggleCollection('${collection.id}')"
+                         oncontextmenu="app.showTagContextMenu(event, '${collection.id}')"
                          data-collection-id="${collection.id}">
                         <div class="collection-header">
                             <div class="collection-info">
                                 <div class="collection-name">${collection.name}</div>
+                                ${tagsHtml}
                                 <div class="collection-count">${collection.images.length} images</div>
                             </div>
                         </div>
@@ -494,15 +552,31 @@ class DrawingReferenceApp {
                         </div>
                     </div>
                 `;
-            } else {
-                // Small and medium layouts: horizontal, full card clickable
+            } else if (this.iconSize === 'small') {
+                // Small layout: no thumbnail, square-ish shape
                 return `
                     <div class="collection-item ${collection.enabled ? 'active' : ''}"
                          onclick="app.toggleCollection('${collection.id}')"
+                         oncontextmenu="app.showTagContextMenu(event, '${collection.id}')"
+                         data-collection-id="${collection.id}">
+                        <div class="collection-info">
+                            <div class="collection-name">${collection.name}</div>
+                            ${tagsHtml}
+                            <div class="collection-count">${collection.images.length} images</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Medium layout: horizontal with thumbnail
+                return `
+                    <div class="collection-item ${collection.enabled ? 'active' : ''}"
+                         onclick="app.toggleCollection('${collection.id}')"
+                         oncontextmenu="app.showTagContextMenu(event, '${collection.id}')"
                          data-collection-id="${collection.id}">
                         <div class="collection-header">
                             <div class="collection-info">
                                 <div class="collection-name">${collection.name}</div>
+                                ${tagsHtml}
                                 <div class="collection-count">${collection.images.length} images</div>
                             </div>
                         </div>
@@ -516,6 +590,7 @@ class DrawingReferenceApp {
 
         this.updateDeleteButton();
         this.updateIconSizeButtons(); // Ensure icon size class is applied
+        this.renderTagFilters(); // Update tag filters after rendering
     }
 
     getEnabledImages() {
@@ -979,6 +1054,149 @@ class DrawingReferenceApp {
 
         this.updateDeleteButton();
         this.saveSettings();
+    }
+
+    selectAllCollections() {
+        this.collections.forEach(collection => {
+            collection.enabled = true;
+        });
+        this.renderCollections();
+        this.saveSettings();
+    }
+
+    deselectAllCollections() {
+        this.collections.forEach(collection => {
+            collection.enabled = false;
+        });
+        this.renderCollections();
+        this.saveSettings();
+    }
+
+    rebuildTagBank() {
+        this.allTags.clear();
+        this.collections.forEach(collection => {
+            if (collection.tags) {
+                collection.tags.forEach(tag => this.allTags.add(tag));
+            }
+        });
+    }
+
+    addTagToCollection(collectionId, tag) {
+        const collection = this.collections.find(c => c.id === collectionId);
+        if (collection && !collection.tags.includes(tag)) {
+            collection.tags.push(tag);
+            this.allTags.add(tag);
+            this.renderCollections();
+            this.saveSettings();
+        }
+    }
+
+    removeTagFromCollection(collectionId, tag) {
+        const collection = this.collections.find(c => c.id === collectionId);
+        if (collection) {
+            collection.tags = collection.tags.filter(t => t !== tag);
+            this.rebuildTagBank();
+            this.renderCollections();
+            this.saveSettings();
+        }
+    }
+
+    showTagContextMenu(event, collectionId) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        this.currentContextCollectionId = collectionId;
+        const collection = this.collections.find(c => c.id === collectionId);
+
+        if (!collection) return;
+
+        // Position the context menu
+        const menu = this.tagContextMenu;
+        menu.style.display = 'block';
+        menu.style.left = Math.min(event.clientX, window.innerWidth - 320) + 'px';
+        menu.style.top = Math.min(event.clientY, window.innerHeight - 300) + 'px';
+
+        // Populate current tags
+        this.currentTagsList.innerHTML = collection.tags.length > 0 ?
+            collection.tags.map(tag =>
+                `<span class="current-tag" onclick="app.removeTagFromCollection('${collectionId}', '${tag}')">${tag} ×</span>`
+            ).join('') :
+            '<span class="no-tags-text">No tags assigned</span>';
+
+        // Populate available tags (excluding current ones)
+        const availableTags = [...this.allTags].filter(tag => !collection.tags.includes(tag));
+        this.availableTagsList.innerHTML = availableTags.length > 0 ?
+            availableTags.map(tag =>
+                `<span class="available-tag" onclick="app.addTagToCollection('${collectionId}', '${tag}')">${tag}</span>`
+            ).join('') :
+            '<span class="no-tags-text">No additional tags available</span>';
+
+        // Clear new tag input
+        this.newTagInput.value = '';
+    }
+
+    hideTagContextMenu() {
+        this.tagContextMenu.style.display = 'none';
+        this.currentContextCollectionId = null;
+    }
+
+    addNewTag() {
+        const tagName = this.newTagInput.value.trim();
+        if (!tagName || tagName.length === 0) return;
+
+        // Validate tag name
+        if (tagName.length > 20) {
+            alert('Tag name must be 20 characters or less');
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9\-_\s]+$/.test(tagName)) {
+            alert('Tag names can only contain letters, numbers, spaces, hyphens, and underscores');
+            return;
+        }
+
+        if (this.currentContextCollectionId) {
+            this.addTagToCollection(this.currentContextCollectionId, tagName);
+            // Refresh the context menu
+            this.showTagContextMenu({
+                clientX: parseInt(this.tagContextMenu.style.left),
+                clientY: parseInt(this.tagContextMenu.style.top),
+                preventDefault: () => {},
+                stopPropagation: () => {}
+            }, this.currentContextCollectionId);
+        }
+    }
+
+    renderTagFilters() {
+        const tagFiltersContainer = this.tagFilters;
+        const clearBtn = this.clearFiltersBtn;
+
+        if (this.allTags.size === 0) {
+            tagFiltersContainer.innerHTML = '<span class="no-tags-text">No tags available</span>';
+            clearBtn.style.display = 'none';
+            return;
+        }
+
+        tagFiltersContainer.innerHTML = [...this.allTags].sort().map(tag => {
+            const isSelected = this.selectedTags.has(tag);
+            return `<span class="filter-tag ${isSelected ? 'active' : ''}" onclick="app.toggleTagFilter('${tag}')">${tag}</span>`;
+        }).join('');
+
+        clearBtn.style.display = this.selectedTags.size > 0 ? 'block' : 'none';
+    }
+
+    toggleTagFilter(tag) {
+        if (this.selectedTags.has(tag)) {
+            this.selectedTags.delete(tag);
+        } else {
+            this.selectedTags.add(tag);
+        }
+        this.renderCollections();
+    }
+
+    clearTagFilters() {
+        this.selectedTags.clear();
+        this.renderCollections();
     }
 }
 

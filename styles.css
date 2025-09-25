@@ -29,10 +29,23 @@ body {
     gap: 20px;
 }
 
+.app-title {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
 .app-title h1 {
     color: #4a9eff;
     font-size: 1.5rem;
     font-weight: 600;
+    margin: 0;
+}
+
+.selection-buttons {
+    display: flex;
+    gap: 8px;
 }
 
 .timer-controls {
@@ -140,6 +153,257 @@ body {
     background: #218838;
 }
 
+.selection-btn {
+    background: #6c757d;
+    color: white;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.selection-btn:hover {
+    background: #545b62;
+}
+
+/* Tag System Styles */
+.tag-filter-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 400px;
+}
+
+.tag-filter-section label {
+    font-size: 0.8rem;
+    color: #ccc;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.tag-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-height: 24px;
+}
+
+.filter-tag {
+    padding: 2px 6px;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    line-height: 1.2;
+}
+
+.filter-tag:hover {
+    background: #555;
+    border-color: #4a9eff;
+}
+
+.filter-tag.active {
+    background: #4a9eff;
+    border-color: #4a9eff;
+    color: white;
+}
+
+.clear-filters-btn {
+    padding: 3px 6px;
+    background: #666;
+    border: 1px solid #777;
+    border-radius: 4px;
+    color: white;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1.2;
+}
+
+.clear-filters-btn:hover {
+    background: #777;
+}
+
+/* Collection Tags Display */
+.collection-tags {
+    margin: 4px 0;
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    min-height: 16px;
+}
+
+.collection-tags .tag-small {
+    padding: 1px 4px;
+    background: #4a9eff;
+    color: white;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.collection-tags.no-tags {
+    color: #888;
+    font-size: 0.65rem;
+    font-style: italic;
+    line-height: 1.2;
+}
+
+/* Tag Context Menu */
+.tag-context-menu {
+    position: fixed;
+    background: #2d2d2d;
+    border: 1px solid #555;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    padding: 0;
+    z-index: 1000;
+    width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.context-menu-header {
+    background: #3d3d3d;
+    padding: 12px 16px;
+    font-weight: 600;
+    border-bottom: 1px solid #555;
+    color: #fff;
+}
+
+.tag-list-container {
+    padding: 16px;
+}
+
+.tag-section-title {
+    font-size: 0.85rem;
+    color: #ccc;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.tags-display, .tags-list {
+    min-height: 32px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.current-tag {
+    padding: 4px 8px;
+    background: #4a9eff;
+    color: white;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.current-tag:hover {
+    background: #ff4757;
+}
+
+.available-tag {
+    padding: 4px 8px;
+    background: #444;
+    border: 1px solid #666;
+    color: #ccc;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.available-tag:hover {
+    background: #4a9eff;
+    border-color: #4a9eff;
+    color: white;
+}
+
+.new-tag-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.new-tag-input input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.new-tag-input input:focus {
+    outline: none;
+    border-color: #4a9eff;
+}
+
+.tag-add-btn {
+    padding: 6px 12px;
+    background: #28a745;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tag-add-btn:hover {
+    background: #218838;
+}
+
+.context-menu-actions {
+    padding: 12px 16px;
+    border-top: 1px solid #555;
+    background: #333;
+    border-radius: 0 0 8px 8px;
+}
+
+.context-close-btn {
+    width: 100%;
+    padding: 8px;
+    background: #666;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.context-close-btn:hover {
+    background: #777;
+}
+
+.no-tags-text {
+    color: #888;
+    font-style: italic;
+    font-size: 0.8rem;
+    padding: 8px;
+}
+
+/* Update collections header layout to accommodate tags */
+.collections-header .header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 /* Removed - now defined with collection styles above */
 
 .primary-btn:disabled, .secondary-btn:disabled {
@@ -231,7 +495,11 @@ body {
 
 /* Icon Size Variations */
 .collections-list.icon-size-small .collection-item {
-    height: 130px;
+    height: 140px;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    padding: 12px;
 }
 
 .collections-list.icon-size-medium .collection-item {
@@ -244,7 +512,11 @@ body {
     position: relative;
 }
 
-.collections-list.icon-size-small,
+.collections-list.icon-size-small {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+}
+
 .collections-list.icon-size-medium,
 .collections-list.icon-size-large {
     grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
@@ -253,7 +525,10 @@ body {
 
 /* Dynamic responsive adjustments */
 @media (min-width: 1000px) and (max-width: 1499px) {
-    .collections-list.icon-size-small,
+    .collections-list.icon-size-small {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+    }
     .collections-list.icon-size-medium {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
@@ -265,7 +540,10 @@ body {
 }
 
 @media (min-width: 1500px) and (max-width: 2199px) {
-    .collections-list.icon-size-small,
+    .collections-list.icon-size-small {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 8px;
+    }
     .collections-list.icon-size-medium {
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
@@ -277,7 +555,10 @@ body {
 }
 
 @media (min-width: 2200px) and (max-width: 2899px) {
-    .collections-list.icon-size-small,
+    .collections-list.icon-size-small {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 8px;
+    }
     .collections-list.icon-size-medium {
         grid-template-columns: repeat(4, 1fr);
         gap: 8px;
@@ -289,7 +570,10 @@ body {
 }
 
 @media (min-width: 2900px) {
-    .collections-list.icon-size-small,
+    .collections-list.icon-size-small {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+    }
     .collections-list.icon-size-medium {
         grid-template-columns: repeat(5, 1fr);
         gap: 8px;
@@ -301,9 +585,27 @@ body {
 }
 
 /* Thumbnail size variations */
-.collections-list.icon-size-small .collection-thumbnail {
-    width: 160px;
-    height: 130px;
+/* Small size has no thumbnails */
+.collections-list.icon-size-small .collection-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.collections-list.icon-size-small .collection-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.collections-list.icon-size-small .collection-count {
+    font-size: 0.7rem;
+    opacity: 0.8;
 }
 
 .collections-list.icon-size-medium .collection-thumbnail {
@@ -311,10 +613,20 @@ body {
     height: 160px;
 }
 
+.collections-list.icon-size-medium .collection-thumbnail img {
+    max-width: 200px;
+    max-height: 160px;
+}
+
 .collections-list.icon-size-large .collection-thumbnail {
     width: 100%;
     height: 540px;
     order: 2;
+}
+
+.collections-list.icon-size-large .collection-thumbnail img {
+    max-width: 100%;
+    max-height: 540px;
 }
 
 .collections-list.icon-size-large .collection-header {
@@ -433,13 +745,16 @@ body {
 }
 
 .collection-thumbnail img {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 4px;
     opacity: 0.8;
+    image-rendering: optimizeSpeed;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
+    will-change: auto;
+    transform: translateZ(0);
 }
 
 .collection-thumbnail .no-image {

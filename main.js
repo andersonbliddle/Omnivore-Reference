@@ -1,11 +1,16 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const sharp = require('sharp');
+const crypto = require('crypto');
 
 let mainWindow;
 
 // Settings file path - save in app directory
 const settingsPath = path.join(__dirname, 'settings.json');
+
+// Thumbnail cache directory
+const thumbnailCacheDir = path.join(__dirname, 'thumbnail_cache');
 
 // Default settings
 const defaultSettings = {
@@ -36,7 +41,80 @@ async function saveSettings(settings) {
   }
 }
 
+// Ensure thumbnail cache directory exists
+async function ensureThumbnailCacheDir() {
+  try {
+    await fs.access(thumbnailCacheDir);
+  } catch (error) {
+    // Directory doesn't exist, create it
+    await fs.mkdir(thumbnailCacheDir, { recursive: true });
+  }
+}
+
+// Generate a hash for the image file to use as thumbnail filename
+function generateThumbnailHash(imagePath, modifiedTime) {
+  const hash = crypto.createHash('md5');
+  hash.update(imagePath + modifiedTime);
+  return hash.digest('hex') + '.webp';
+}
+
+// Generate thumbnail for an image
+async function generateThumbnail(imagePath, thumbnailPath, maxWidth = 120, maxHeight = 96) {
+  try {
+    await sharp(imagePath)
+      .resize(maxWidth, maxHeight, {
+        fit: 'cover',
+        position: 'center',
+        withoutEnlargement: false
+      })
+      .webp({ quality: 40 })
+      .toFile(thumbnailPath);
+
+    return thumbnailPath;
+  } catch (error) {
+    console.error('Error generating thumbnail for', imagePath, error);
+    return null;
+  }
+}
+
+// Get or create thumbnail for an image
+async function getThumbnail(imagePath) {
+  try {
+    // Get file stats for modification time
+    const stats = await fs.stat(imagePath);
+    const modifiedTime = stats.mtime.getTime();
+
+    // Generate thumbnail filename based on path and modification time
+    const thumbnailFileName = generateThumbnailHash(imagePath, modifiedTime);
+    const thumbnailPath = path.join(thumbnailCacheDir, thumbnailFileName);
+
+    // Check if thumbnail already exists and is newer than the original
+    try {
+      const thumbnailStats = await fs.stat(thumbnailPath);
+      if (thumbnailStats.mtime.getTime() >= modifiedTime) {
+        // Thumbnail is up to date
+        return thumbnailPath;
+      }
+    } catch (error) {
+      // Thumbnail doesn't exist, will create new one
+    }
+
+    // Generate new thumbnail
+    const result = await generateThumbnail(imagePath, thumbnailPath);
+    return result;
+  } catch (error) {
+    console.error('Error processing thumbnail for', imagePath, error);
+    return null;
+  }
+}
+
 async function createWindow() {
+  // Ensure thumbnail cache directory exists
+  await ensureThumbnailCacheDir();
+
+  // Clean up old thumbnails on startup
+  cleanupThumbnails();
+
   const settings = await loadSettings();
   
   mainWindow = new BrowserWindow({
@@ -134,18 +212,37 @@ async function scanDirectoryRecursively(dirPath) {
   }
 }
 
-// Get images from directory (now with recursive scanning)
+// Get images from directory (now with recursive scanning and thumbnail generation)
 ipcMain.handle('get-images-from-directory', async (event, directoryPath) => {
   try {
     const imageFiles = await scanDirectoryRecursively(directoryPath);
-    
+
     // Select up to 3 random images for preview
     const shuffled = [...imageFiles].sort(() => 0.5 - Math.random());
-    const previewImages = shuffled.slice(0, 3).map(img => ({
-      path: img.path,
-      name: img.name
-    }));
-    
+    const previewCandidates = shuffled.slice(0, 3);
+
+    // Generate thumbnails for preview images
+    const previewImages = [];
+    for (const img of previewCandidates) {
+      const thumbnailPath = await getThumbnail(img.path);
+      if (thumbnailPath) {
+        previewImages.push({
+          path: img.path,
+          name: img.name,
+          thumbnailPath: thumbnailPath
+        });
+      }
+    }
+
+    // If no thumbnails were generated successfully, use the first image as fallback
+    if (previewImages.length === 0 && imageFiles.length > 0) {
+      previewImages.push({
+        path: imageFiles[0].path,
+        name: imageFiles[0].name,
+        thumbnailPath: null
+      });
+    }
+
     return {
       images: imageFiles,
       previews: previewImages
@@ -179,3 +276,40 @@ ipcMain.handle('toggle-fullscreen', async () => {
   }
   return false;
 });
+
+// Clean up old thumbnails that are no longer referenced
+async function cleanupThumbnails() {
+  try {
+    const thumbnailFiles = await fs.readdir(thumbnailCacheDir);
+    let cleanedCount = 0;
+
+    // Get current time
+    const now = Date.now();
+    const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+    for (const file of thumbnailFiles) {
+      if (file.endsWith('.webp')) {
+        const filePath = path.join(thumbnailCacheDir, file);
+        try {
+          const stats = await fs.stat(filePath);
+          // Remove thumbnails older than 30 days that haven't been accessed recently
+          if (now - stats.atime.getTime() > maxAge) {
+            await fs.unlink(filePath);
+            cleanedCount++;
+          }
+        } catch (error) {
+          // File might have been deleted already
+        }
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`Cleaned up ${cleanedCount} old thumbnails`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up thumbnails:', error);
+  }
+}
+
+// Add cleanup handler
+ipcMain.handle('cleanup-thumbnails', cleanupThumbnails);

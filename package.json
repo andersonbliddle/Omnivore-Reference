@@ -11,6 +11,9 @@
   "keywords": ["drawing", "reference", "timer", "art"],
   "author": "Your Name",
   "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.32.0"
+  },
   "devDependencies": {
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4"

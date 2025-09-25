@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Fullscreen toggle
   toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
-  
+
+  // Thumbnail cleanup
+  cleanupThumbnails: () => ipcRenderer.invoke('cleanup-thumbnails'),
+
   // No keyboard shortcuts - button controls only
 });
