@@ -18,6 +18,12 @@ class DrawingReferenceApp {
         this.isReorderMode = false;
         this.iconSize = 'small';
 
+        // Drag selection state
+        this.isDragSelecting = false;
+        this.selectionStart = { x: 0, y: 0 };
+        this.selectionEnd = { x: 0, y: 0 };
+        this.selectionRect = null;
+
         this.initializeElements();
         this.bindEvents();
         this.loadSettings();
@@ -67,6 +73,11 @@ class DrawingReferenceApp {
         this.iconSizeButtons.forEach(btn => {
             btn.addEventListener('click', () => this.setIconSize(btn.getAttribute('data-size')));
         });
+
+        // Drag selection events (from anywhere in the app)
+        document.addEventListener('mousedown', (e) => this.startDragSelection(e));
+        document.addEventListener('mousemove', (e) => this.updateDragSelection(e));
+        document.addEventListener('mouseup', (e) => this.endDragSelection(e));
         
         // Zoom controls (removed from menu)
         
@@ -467,14 +478,11 @@ class DrawingReferenceApp {
                 '<div class="no-image">No images</div>';
 
             if (this.iconSize === 'large') {
-                // Large layout: vertical with checkbox on top-right
+                // Large layout: vertical, full card clickable
                 return `
-                    <div class="collection-item ${collection.enabled ? 'active' : ''}">
-                        <div class="collection-toggle">
-                            <input type="checkbox" ${collection.enabled ? 'checked' : ''}
-                                   onchange="app.toggleCollection('${collection.id}')"
-                                   data-collection-id="${collection.id}">
-                        </div>
+                    <div class="collection-item ${collection.enabled ? 'active' : ''}"
+                         onclick="app.toggleCollection('${collection.id}')"
+                         data-collection-id="${collection.id}">
                         <div class="collection-header">
                             <div class="collection-info">
                                 <div class="collection-name">${collection.name}</div>
@@ -487,15 +495,12 @@ class DrawingReferenceApp {
                     </div>
                 `;
             } else {
-                // Small and medium layouts: horizontal
+                // Small and medium layouts: horizontal, full card clickable
                 return `
-                    <div class="collection-item ${collection.enabled ? 'active' : ''}">
+                    <div class="collection-item ${collection.enabled ? 'active' : ''}"
+                         onclick="app.toggleCollection('${collection.id}')"
+                         data-collection-id="${collection.id}">
                         <div class="collection-header">
-                            <div class="collection-toggle">
-                                <input type="checkbox" ${collection.enabled ? 'checked' : ''}
-                                       onchange="app.toggleCollection('${collection.id}')"
-                                       data-collection-id="${collection.id}">
-                            </div>
                             <div class="collection-info">
                                 <div class="collection-name">${collection.name}</div>
                                 <div class="collection-count">${collection.images.length} images</div>
@@ -622,9 +627,15 @@ class DrawingReferenceApp {
         this.currentImageIndex = 0;
         this.sessionImages = [];
         this.isPaused = false;
-        
+
         this.updateUI();
         this.showPlaceholder();
+
+        // Ensure drag selection state is cleared
+        if (this.isDragSelecting) {
+            this.isDragSelecting = false;
+            this.removeSelectionRectangle();
+        }
     }
 
     endSession() {
@@ -794,22 +805,22 @@ class DrawingReferenceApp {
 
         collectionItems.forEach(item => {
             item.draggable = false;
-            item.style.cursor = 'default';
+            item.style.cursor = 'pointer'; // Keep pointer cursor for clicking
 
             // Remove all drag event listeners by cloning and replacing
             const newItem = item.cloneNode(true);
             item.parentNode.replaceChild(newItem, item);
         });
 
-        // Re-bind checkbox events after cloning
-        this.bindCollectionCheckboxes();
+        // Re-bind click events after cloning
+        this.bindCollectionClickEvents();
     }
 
-    bindCollectionCheckboxes() {
-        const checkboxes = document.querySelectorAll('.collection-item input[type="checkbox"]');
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                const collectionId = e.target.getAttribute('data-collection-id');
+    bindCollectionClickEvents() {
+        const collectionItems = document.querySelectorAll('.collection-item');
+        collectionItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                const collectionId = e.target.closest('.collection-item').getAttribute('data-collection-id');
                 this.toggleCollection(collectionId);
             });
         });
@@ -827,6 +838,147 @@ class DrawingReferenceApp {
         if (this.isReorderMode) {
             this.enableDragAndDrop();
         }
+    }
+
+    startDragSelection(e) {
+        // Don't start drag selection during reorder mode, sessions, or when clicking interactive elements
+        if (this.isReorderMode || this.currentSession ||
+            e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' ||
+            e.target.closest('.header-controls') ||
+            e.target.closest('.controls-header') ||
+            e.target.closest('.session-overlay') ||
+            e.target.closest('.floating-buttons')) {
+            return;
+        }
+
+        // Don't start drag selection if clicking on a collection item (let the click handler work)
+        if (e.target.closest('.collection-item')) {
+            return;
+        }
+
+        // Allow drag selection from anywhere in the app, but only show collections if they exist
+        if (this.collections.length > 0) {
+            this.isDragSelecting = true;
+
+            // Use viewport coordinates for full-app dragging
+            this.selectionStart = {
+                x: e.clientX,
+                y: e.clientY
+            };
+
+            this.createSelectionRectangle();
+            e.preventDefault();
+        }
+    }
+
+    updateDragSelection(e) {
+        if (!this.isDragSelecting) return;
+
+        // Use viewport coordinates for full-app dragging
+        this.selectionEnd = {
+            x: e.clientX,
+            y: e.clientY
+        };
+
+        this.updateSelectionRectangle();
+        this.updateCollectionSelection();
+    }
+
+    endDragSelection(e) {
+        if (!this.isDragSelecting) return;
+
+        this.isDragSelecting = false;
+        this.removeSelectionRectangle();
+        this.finalizeSelection();
+    }
+
+    createSelectionRectangle() {
+        this.selectionRect = document.createElement('div');
+        this.selectionRect.className = 'selection-rectangle';
+        this.selectionRect.style.position = 'fixed';
+        document.body.appendChild(this.selectionRect);
+    }
+
+    updateSelectionRectangle() {
+        if (!this.selectionRect) return;
+
+        const left = Math.min(this.selectionStart.x, this.selectionEnd.x);
+        const top = Math.min(this.selectionStart.y, this.selectionEnd.y);
+        const width = Math.abs(this.selectionEnd.x - this.selectionStart.x);
+        const height = Math.abs(this.selectionEnd.y - this.selectionStart.y);
+
+        // Use viewport coordinates since the rectangle is fixed positioned
+        this.selectionRect.style.left = left + 'px';
+        this.selectionRect.style.top = top + 'px';
+        this.selectionRect.style.width = width + 'px';
+        this.selectionRect.style.height = height + 'px';
+        this.selectionRect.style.display = 'block';
+    }
+
+    removeSelectionRectangle() {
+        if (this.selectionRect) {
+            this.selectionRect.remove();
+            this.selectionRect = null;
+        }
+    }
+
+    updateCollectionSelection() {
+        const collectionItems = this.collectionsListEl.querySelectorAll('.collection-item');
+        const selectionBounds = this.getSelectionBounds();
+
+        collectionItems.forEach(item => {
+            const itemBounds = item.getBoundingClientRect();
+
+            // Use viewport coordinates directly since selection is also in viewport coords
+            const itemViewportBounds = {
+                left: itemBounds.left,
+                top: itemBounds.top,
+                right: itemBounds.right,
+                bottom: itemBounds.bottom
+            };
+
+            const isIntersecting = !(
+                itemViewportBounds.right < selectionBounds.left ||
+                itemViewportBounds.left > selectionBounds.right ||
+                itemViewportBounds.bottom < selectionBounds.top ||
+                itemViewportBounds.top > selectionBounds.bottom
+            );
+
+            item.classList.toggle('selecting', isIntersecting);
+        });
+    }
+
+    getSelectionBounds() {
+        return {
+            left: Math.min(this.selectionStart.x, this.selectionEnd.x),
+            top: Math.min(this.selectionStart.y, this.selectionEnd.y),
+            right: Math.max(this.selectionStart.x, this.selectionEnd.x),
+            bottom: Math.max(this.selectionStart.y, this.selectionEnd.y)
+        };
+    }
+
+    finalizeSelection() {
+        const selectingItems = this.collectionsListEl.querySelectorAll('.collection-item.selecting');
+
+        selectingItems.forEach(item => {
+            const collectionId = item.getAttribute('data-collection-id');
+            const collection = this.collections.find(c => c.id === collectionId);
+            if (collection) {
+                collection.enabled = !collection.enabled;
+
+                // Update visual state immediately and forcefully
+                item.classList.remove('selecting');
+                item.classList.toggle('active', collection.enabled);
+
+                // Force a reflow to ensure the class changes take effect
+                item.offsetHeight;
+            } else {
+                item.classList.remove('selecting');
+            }
+        });
+
+        this.updateDeleteButton();
+        this.saveSettings();
     }
 }
 
