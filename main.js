@@ -51,15 +51,21 @@ async function ensureThumbnailCacheDir() {
   }
 }
 
+// Thumbnail version - increment this when changing thumbnail parameters
+const THUMBNAIL_VERSION = 'v4_200x150_50q';
+
 // Generate a hash for the image file to use as thumbnail filename
 function generateThumbnailHash(imagePath, modifiedTime) {
   const hash = crypto.createHash('md5');
-  hash.update(imagePath + modifiedTime);
+  hash.update(imagePath + modifiedTime + THUMBNAIL_VERSION);
   return hash.digest('hex') + '.webp';
 }
 
+// In-memory cache for base64 thumbnails
+const thumbnailCache = new Map();
+
 // Generate thumbnail for an image
-async function generateThumbnail(imagePath, thumbnailPath, maxWidth = 120, maxHeight = 96) {
+async function generateThumbnail(imagePath, thumbnailPath, maxWidth = 200, maxHeight = 150) {
   try {
     await sharp(imagePath)
       .resize(maxWidth, maxHeight, {
@@ -67,7 +73,7 @@ async function generateThumbnail(imagePath, thumbnailPath, maxWidth = 120, maxHe
         position: 'center',
         withoutEnlargement: false
       })
-      .webp({ quality: 40 })
+      .webp({ quality: 50 })
       .toFile(thumbnailPath);
 
     return thumbnailPath;
@@ -77,31 +83,80 @@ async function generateThumbnail(imagePath, thumbnailPath, maxWidth = 120, maxHe
   }
 }
 
-// Get or create thumbnail for an image
+// Generate base64 thumbnail from file
+async function generateBase64Thumbnail(imagePath, maxWidth = 200, maxHeight = 150) {
+  try {
+    const buffer = await sharp(imagePath)
+      .resize(maxWidth, maxHeight, {
+        fit: 'cover',
+        position: 'center',
+        withoutEnlargement: false
+      })
+      .webp({ quality: 50 })
+      .toBuffer();
+
+    return `data:image/webp;base64,${buffer.toString('base64')}`;
+  } catch (error) {
+    console.error('Error generating base64 thumbnail for', imagePath, error);
+    return null;
+  }
+}
+
+// Get or create thumbnail for an image (returns base64 data URL)
 async function getThumbnail(imagePath) {
   try {
     // Get file stats for modification time
     const stats = await fs.stat(imagePath);
     const modifiedTime = stats.mtime.getTime();
 
+    const cacheKey = `${imagePath}:${modifiedTime}:${THUMBNAIL_VERSION}`;
+
+    // Check memory cache first
+    if (thumbnailCache.has(cacheKey)) {
+      return thumbnailCache.get(cacheKey);
+    }
+
     // Generate thumbnail filename based on path and modification time
     const thumbnailFileName = generateThumbnailHash(imagePath, modifiedTime);
     const thumbnailPath = path.join(thumbnailCacheDir, thumbnailFileName);
 
-    // Check if thumbnail already exists and is newer than the original
+    let base64Thumbnail = null;
+
+    // Check if thumbnail already exists on disk and is newer than the original
     try {
       const thumbnailStats = await fs.stat(thumbnailPath);
       if (thumbnailStats.mtime.getTime() >= modifiedTime) {
-        // Thumbnail is up to date
-        return thumbnailPath;
+        // Thumbnail exists, convert to base64
+        const thumbnailBuffer = await fs.readFile(thumbnailPath);
+        base64Thumbnail = `data:image/webp;base64,${thumbnailBuffer.toString('base64')}`;
       }
     } catch (error) {
       // Thumbnail doesn't exist, will create new one
     }
 
-    // Generate new thumbnail
-    const result = await generateThumbnail(imagePath, thumbnailPath);
-    return result;
+    // If no cached thumbnail, generate new one
+    if (!base64Thumbnail) {
+      // Generate thumbnail file and base64 in parallel
+      const [thumbnailFilePath, base64Result] = await Promise.all([
+        generateThumbnail(imagePath, thumbnailPath),
+        generateBase64Thumbnail(imagePath)
+      ]);
+
+      base64Thumbnail = base64Result;
+    }
+
+    // Cache in memory if successful
+    if (base64Thumbnail) {
+      thumbnailCache.set(cacheKey, base64Thumbnail);
+
+      // Limit cache size (keep last 500 thumbnails)
+      if (thumbnailCache.size > 500) {
+        const firstKey = thumbnailCache.keys().next().value;
+        thumbnailCache.delete(firstKey);
+      }
+    }
+
+    return base64Thumbnail;
   } catch (error) {
     console.error('Error processing thumbnail for', imagePath, error);
     return null;
@@ -212,34 +267,51 @@ async function scanDirectoryRecursively(dirPath) {
   }
 }
 
-// Get images from directory (now with recursive scanning and thumbnail generation)
+// Get images from directory (now with recursive scanning and background thumbnail generation)
 ipcMain.handle('get-images-from-directory', async (event, directoryPath) => {
   try {
     const imageFiles = await scanDirectoryRecursively(directoryPath);
 
-    // Select up to 3 random images for preview
+    // Select just 1 image for preview (faster than 3)
     const shuffled = [...imageFiles].sort(() => 0.5 - Math.random());
-    const previewCandidates = shuffled.slice(0, 3);
+    const previewCandidate = shuffled[0];
 
-    // Generate thumbnails for preview images
+    // Generate thumbnail for preview image (non-blocking)
     const previewImages = [];
-    for (const img of previewCandidates) {
-      const thumbnailPath = await getThumbnail(img.path);
-      if (thumbnailPath) {
+    if (previewCandidate) {
+      // Try to get thumbnail quickly, but don't block if it fails
+      try {
+        const thumbnailData = await Promise.race([
+          getThumbnail(previewCandidate.path),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
+        ]);
+
+        if (thumbnailData) {
+          previewImages.push({
+            path: previewCandidate.path,
+            name: previewCandidate.name,
+            thumbnailData: thumbnailData
+          });
+        }
+      } catch (error) {
+        // If thumbnail generation takes too long or fails, use placeholder
         previewImages.push({
-          path: img.path,
-          name: img.name,
-          thumbnailPath: thumbnailPath
+          path: previewCandidate.path,
+          name: previewCandidate.name,
+          thumbnailData: null
         });
       }
-    }
 
-    // If no thumbnails were generated successfully, use the first image as fallback
-    if (previewImages.length === 0 && imageFiles.length > 0) {
-      previewImages.push({
-        path: imageFiles[0].path,
-        name: imageFiles[0].name,
-        thumbnailPath: null
+      // Generate thumbnails for remaining images in background (non-blocking)
+      setImmediate(async () => {
+        const remainingImages = shuffled.slice(1, 10); // Process up to 10 more images
+        for (const img of remainingImages) {
+          try {
+            await getThumbnail(img.path);
+          } catch (error) {
+            // Ignore errors in background processing
+          }
+        }
       });
     }
 
@@ -313,3 +385,14 @@ async function cleanupThumbnails() {
 
 // Add cleanup handler
 ipcMain.handle('cleanup-thumbnails', cleanupThumbnails);
+
+// Handle individual thumbnail requests
+ipcMain.handle('get-thumbnail', async (event, imagePath) => {
+  try {
+    const thumbnailData = await getThumbnail(imagePath);
+    return thumbnailData;
+  } catch (error) {
+    console.error('Error getting thumbnail:', error);
+    return null;
+  }
+});

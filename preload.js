@@ -16,5 +16,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Thumbnail cleanup
   cleanupThumbnails: () => ipcRenderer.invoke('cleanup-thumbnails'),
 
+  // Individual thumbnail loading
+  getThumbnail: (imagePath) => ipcRenderer.invoke('get-thumbnail', imagePath),
+
   // No keyboard shortcuts - button controls only
 });

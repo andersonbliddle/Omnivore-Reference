@@ -525,8 +525,10 @@ class DrawingReferenceApp {
 
         this.collectionsListEl.innerHTML = filteredCollections.map(collection => {
             const firstPreview = collection.previews && collection.previews.length > 0 ? collection.previews[0] : null;
-            const thumbnailHtml = firstPreview ?
-                `<img src="${this.formatImagePath(firstPreview.thumbnailPath || firstPreview.path)}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">` :
+            const thumbnailHtml = firstPreview && firstPreview.thumbnailData ?
+                `<img src="${firstPreview.thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">` :
+                firstPreview ?
+                `<div class="no-image placeholder">Loading...</div>` :
                 '<div class="no-image">No images</div>';
 
             const tagsHtml = collection.tags && collection.tags.length > 0 ?
@@ -591,6 +593,44 @@ class DrawingReferenceApp {
         this.updateDeleteButton();
         this.updateIconSizeButtons(); // Ensure icon size class is applied
         this.renderTagFilters(); // Update tag filters after rendering
+
+        // Load thumbnails for placeholders
+        this.loadPendingThumbnails();
+    }
+
+    async loadPendingThumbnails() {
+        // Find all collections with placeholder thumbnails
+        const placeholders = this.collectionsListEl.querySelectorAll('.no-image.placeholder');
+
+        for (const placeholder of placeholders) {
+            const collectionItem = placeholder.closest('.collection-item');
+            const collectionId = collectionItem.getAttribute('data-collection-id');
+            const collection = this.collections.find(c => c.id === collectionId);
+
+            if (collection && collection.previews && collection.previews.length > 0) {
+                const preview = collection.previews[0];
+                if (preview && !preview.thumbnailData) {
+                    try {
+                        // Request thumbnail from main process
+                        const thumbnailData = await window.electronAPI.getThumbnail(preview.path);
+                        if (thumbnailData) {
+                            // Update the collection data
+                            preview.thumbnailData = thumbnailData;
+
+                            // Update the DOM
+                            placeholder.outerHTML = `<img src="${thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">`;
+                        } else {
+                            placeholder.textContent = 'No preview';
+                            placeholder.classList.remove('placeholder');
+                        }
+                    } catch (error) {
+                        console.error('Error loading thumbnail:', error);
+                        placeholder.textContent = 'No preview';
+                        placeholder.classList.remove('placeholder');
+                    }
+                }
+            }
+        }
     }
 
     getEnabledImages() {
