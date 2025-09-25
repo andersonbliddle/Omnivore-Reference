@@ -55378,10 +55378,10 @@
   "timerDuration": 60,
   "sessionLength": 10,
   "windowBounds": {
-    "x": 444,
-    "y": 55,
-    "width": 1764,
-    "height": 1134
+    "x": -8,
+    "y": -8,
+    "width": 2576,
+    "height": 1416
   },
-  "iconSize": "small"
+  "iconSize": "medium"
 }

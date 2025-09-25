@@ -248,6 +248,56 @@ body {
 .collections-list.icon-size-medium,
 .collections-list.icon-size-large {
     grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    gap: 8px;
+}
+
+/* Dynamic responsive adjustments */
+@media (min-width: 1000px) and (max-width: 1499px) {
+    .collections-list.icon-size-small,
+    .collections-list.icon-size-medium {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .collections-list.icon-size-large {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}
+
+@media (min-width: 1500px) and (max-width: 2199px) {
+    .collections-list.icon-size-small,
+    .collections-list.icon-size-medium {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .collections-list.icon-size-large {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+}
+
+@media (min-width: 2200px) and (max-width: 2899px) {
+    .collections-list.icon-size-small,
+    .collections-list.icon-size-medium {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+    .collections-list.icon-size-large {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+}
+
+@media (min-width: 2900px) {
+    .collections-list.icon-size-small,
+    .collections-list.icon-size-medium {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+    }
+    .collections-list.icon-size-large {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 24px;
+    }
 }
 
 /* Thumbnail size variations */
