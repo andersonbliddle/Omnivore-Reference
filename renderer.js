@@ -284,7 +284,13 @@ class DrawingReferenceApp {
             if (window.electronAPI) {
                 this.settings = await window.electronAPI.loadSettings();
 
-                // Restore collections
+                // Restore UI settings first
+                this.timerDurationInput.value = this.settings.timerDuration || 60;
+                this.sessionLengthInput.value = this.settings.sessionLength || 10;
+                this.iconSize = this.settings.iconSize || 'small';
+                this.updateIconSizeButtons();
+
+                // Restore collections after icon size is applied
                 this.collections = this.settings.collections || [];
                 // Ensure all collections have tags array (backward compatibility)
                 this.collections.forEach(collection => {
@@ -294,17 +300,6 @@ class DrawingReferenceApp {
                 });
                 this.rebuildTagBank();
                 this.renderCollections();
-
-                // Restore UI settings
-                this.timerDurationInput.value = this.settings.timerDuration || 60;
-                this.sessionLengthInput.value = this.settings.sessionLength || 10;
-                this.iconSize = this.settings.iconSize || 'small';
-                this.updateIconSizeButtons();
-
-                // Ensure thumbnails load on initial startup
-                setTimeout(() => {
-                    this.loadPendingThumbnails();
-                }, 100);
             }
         } catch (error) {
             console.error('Error loading settings:', error);
@@ -548,11 +543,20 @@ class DrawingReferenceApp {
 
         this.collectionsListEl.innerHTML = filteredCollections.map(collection => {
             const firstPreview = collection.previews && collection.previews.length > 0 ? collection.previews[0] : null;
-            const thumbnailHtml = firstPreview && firstPreview.thumbnailData ?
-                `<img src="${firstPreview.thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">` :
-                firstPreview ?
-                `<div class="no-image placeholder">Loading...</div>` :
-                '<div class="no-image">No images</div>';
+
+            let thumbnailHtml;
+            if (firstPreview) {
+                if (firstPreview.thumbnailData) {
+                    // Have thumbnail data, show image
+                    thumbnailHtml = `<img src="${firstPreview.thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">`;
+                } else {
+                    // Have preview but no thumbnail data yet, show loading placeholder
+                    thumbnailHtml = `<div class="no-image placeholder">Loading...</div>`;
+                }
+            } else {
+                // No preview available
+                thumbnailHtml = '<div class="no-image">No images</div>';
+            }
 
             const tagsHtml = collection.tags && collection.tags.length > 0 ?
                 `<div class="collection-tags">${collection.tags.map(tag => `<span class="tag-small">${tag}</span>`).join('')}</div>` :
@@ -622,37 +626,16 @@ class DrawingReferenceApp {
     }
 
     async loadPendingThumbnails() {
-        // Find all collections with placeholder thumbnails or missing thumbnail data
+        // Find all collections with placeholder thumbnails
         const placeholders = this.collectionsListEl.querySelectorAll('.no-image.placeholder');
 
-        // Also look for collections that should have thumbnails but don't show them
-        const allCollectionItems = this.collectionsListEl.querySelectorAll('.collection-item');
-        const itemsNeedingThumbnails = [];
+        // Process all placeholders concurrently for faster loading
+        const loadPromises = Array.from(placeholders).map(placeholder =>
+            this.loadThumbnailForPlaceholder(placeholder)
+        );
 
-        allCollectionItems.forEach(item => {
-            const collectionId = item.getAttribute('data-collection-id');
-            const collection = this.collections.find(c => c.id === collectionId);
-
-            if (collection && collection.previews && collection.previews.length > 0) {
-                const preview = collection.previews[0];
-                const thumbnailContainer = item.querySelector('.collection-thumbnail');
-
-                // Check if thumbnail data exists but image isn't displayed
-                if (preview && !preview.thumbnailData && thumbnailContainer) {
-                    itemsNeedingThumbnails.push({ item, collection, preview });
-                }
-            }
-        });
-
-        // Process placeholders first
-        for (const placeholder of placeholders) {
-            await this.loadThumbnailForPlaceholder(placeholder);
-        }
-
-        // Process items that need thumbnails but aren't showing placeholders
-        for (const { item, collection, preview } of itemsNeedingThumbnails) {
-            await this.loadThumbnailForItem(item, collection, preview);
-        }
+        // Load thumbnails concurrently instead of sequentially
+        await Promise.all(loadPromises);
     }
 
     async loadThumbnailForPlaceholder(placeholder) {
@@ -685,24 +668,6 @@ class DrawingReferenceApp {
         }
     }
 
-    async loadThumbnailForItem(item, collection, preview) {
-        try {
-            // Request thumbnail from main process
-            const thumbnailData = await window.electronAPI.getThumbnail(preview.path);
-            if (thumbnailData) {
-                // Update the collection data
-                preview.thumbnailData = thumbnailData;
-
-                // Find and update the thumbnail container
-                const thumbnailContainer = item.querySelector('.collection-thumbnail');
-                if (thumbnailContainer) {
-                    thumbnailContainer.innerHTML = `<img src="${thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">`;
-                }
-            }
-        } catch (error) {
-            console.error('Error loading thumbnail for item:', error);
-        }
-    }
 
     getEnabledImages() {
         const enabledCollections = this.collections.filter(c => c.enabled);
@@ -1212,6 +1177,11 @@ class DrawingReferenceApp {
             this.allTags.add(tag);
             this.renderCollections();
             this.saveSettings();
+
+            // Refresh the context menu if it's open for this collection
+            if (this.currentContextCollectionId === collectionId && this.tagContextMenu.style.display === 'block') {
+                this.refreshTagContextMenu();
+            }
         }
     }
 
@@ -1222,6 +1192,11 @@ class DrawingReferenceApp {
             this.rebuildTagBank();
             this.renderCollections();
             this.saveSettings();
+
+            // Refresh the context menu if it's open for this collection
+            if (this.currentContextCollectionId === collectionId && this.tagContextMenu.style.display === 'block') {
+                this.refreshTagContextMenu();
+            }
         }
     }
 
@@ -1243,7 +1218,7 @@ class DrawingReferenceApp {
         // Populate current tags
         this.currentTagsList.innerHTML = collection.tags.length > 0 ?
             collection.tags.map(tag =>
-                `<span class="current-tag" onclick="app.removeTagFromCollection('${collectionId}', '${tag}')">${tag} ×</span>`
+                `<span class="current-tag" onclick="event.stopPropagation(); app.removeTagFromCollection('${collectionId}', '${tag}')">${tag} ×</span>`
             ).join('') :
             '<span class="no-tags-text">No tags assigned</span>';
 
@@ -1251,7 +1226,7 @@ class DrawingReferenceApp {
         const availableTags = [...this.allTags].filter(tag => !collection.tags.includes(tag));
         this.availableTagsList.innerHTML = availableTags.length > 0 ?
             availableTags.map(tag =>
-                `<span class="available-tag" onclick="app.addTagToCollection('${collectionId}', '${tag}')">${tag}</span>`
+                `<span class="available-tag" onclick="event.stopPropagation(); app.addTagToCollection('${collectionId}', '${tag}')">${tag}</span>`
             ).join('') :
             '<span class="no-tags-text">No additional tags available</span>';
 
@@ -1262,6 +1237,28 @@ class DrawingReferenceApp {
     hideTagContextMenu() {
         this.tagContextMenu.style.display = 'none';
         this.currentContextCollectionId = null;
+    }
+
+    refreshTagContextMenu() {
+        if (!this.currentContextCollectionId) return;
+
+        const collection = this.collections.find(c => c.id === this.currentContextCollectionId);
+        if (!collection) return;
+
+        // Update current tags list
+        this.currentTagsList.innerHTML = collection.tags.length > 0 ?
+            collection.tags.map(tag =>
+                `<span class="current-tag" onclick="event.stopPropagation(); app.removeTagFromCollection('${this.currentContextCollectionId}', '${tag}')">${tag} ×</span>`
+            ).join('') :
+            '<span class="no-tags-text">No tags assigned</span>';
+
+        // Update available tags list (excluding current ones)
+        const availableTags = [...this.allTags].filter(tag => !collection.tags.includes(tag));
+        this.availableTagsList.innerHTML = availableTags.length > 0 ?
+            availableTags.map(tag =>
+                `<span class="available-tag" onclick="event.stopPropagation(); app.addTagToCollection('${this.currentContextCollectionId}', '${tag}')">${tag}</span>`
+            ).join('') :
+            '<span class="no-tags-text">No additional tags available</span>';
     }
 
     addNewTag() {
@@ -1281,13 +1278,8 @@ class DrawingReferenceApp {
 
         if (this.currentContextCollectionId) {
             this.addTagToCollection(this.currentContextCollectionId, tagName);
-            // Refresh the context menu
-            this.showTagContextMenu({
-                clientX: parseInt(this.tagContextMenu.style.left),
-                clientY: parseInt(this.tagContextMenu.style.top),
-                preventDefault: () => {},
-                stopPropagation: () => {}
-            }, this.currentContextCollectionId);
+            // Clear the input field after adding the tag
+            this.newTagInput.value = '';
         }
     }
 
