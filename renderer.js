@@ -16,6 +16,7 @@ class DrawingReferenceApp {
         this.lastMouseX = 0;
         this.lastMouseY = 0;
         this.isReorderMode = false;
+        this.iconSize = 'small';
 
         this.initializeElements();
         this.bindEvents();
@@ -48,6 +49,9 @@ class DrawingReferenceApp {
         this.sessionCounterEl = document.getElementById('session-counter');
         this.deleteSelectedBtn = document.getElementById('delete-selected');
         this.reorderBtn = document.getElementById('reorder-collections');
+
+        // Icon size controls
+        this.iconSizeButtons = document.querySelectorAll('.icon-size-btn');
     }
 
     bindEvents() {
@@ -58,6 +62,11 @@ class DrawingReferenceApp {
         this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
         this.deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedCollections());
         this.reorderBtn.addEventListener('click', () => this.toggleReorderMode());
+
+        // Icon size controls
+        this.iconSizeButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.setIconSize(btn.getAttribute('data-size')));
+        });
         
         // Zoom controls (removed from menu)
         
@@ -219,6 +228,8 @@ class DrawingReferenceApp {
                 // Restore UI settings
                 this.timerDurationInput.value = this.settings.timerDuration || 60;
                 this.sessionLengthInput.value = this.settings.sessionLength || 10;
+                this.iconSize = this.settings.iconSize || 'small';
+                this.updateIconSizeButtons();
             }
         } catch (error) {
             console.error('Error loading settings:', error);
@@ -232,7 +243,8 @@ class DrawingReferenceApp {
                     ...this.settings,
                     collections: this.collections,
                     timerDuration: parseInt(this.timerDurationInput.value),
-                    sessionLength: parseInt(this.sessionLengthInput.value)
+                    sessionLength: parseInt(this.sessionLengthInput.value),
+                    iconSize: this.iconSize
                 };
                 
                 await window.electronAPI.saveSettings(this.settings);
@@ -376,6 +388,24 @@ class DrawingReferenceApp {
         }
     }
 
+    setIconSize(size) {
+        this.iconSize = size;
+        this.updateIconSizeButtons();
+        this.renderCollections();
+        this.saveSettings();
+    }
+
+    updateIconSizeButtons() {
+        this.iconSizeButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-size') === this.iconSize);
+        });
+
+        // Apply size class to collections list
+        const collectionsList = document.getElementById('collections-list');
+        collectionsList.className = collectionsList.className.replace(/\s*icon-size-\w+/g, '');
+        collectionsList.classList.add(`icon-size-${this.iconSize}`);
+    }
+
     updateDeleteButton() {
         const enabledCollections = this.collections.filter(c => c.enabled);
         const hasEnabled = enabledCollections.length > 0;
@@ -455,8 +485,9 @@ class DrawingReferenceApp {
                 </div>
             `;
         }).join('');
-        
+
         this.updateDeleteButton();
+        this.updateIconSizeButtons(); // Ensure icon size class is applied
     }
 
     getEnabledImages() {

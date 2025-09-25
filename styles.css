@@ -164,7 +164,7 @@ body {
     overflow-y: auto;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 15px;
+    gap: 8px;
 }
 
 .collections-header {
@@ -172,6 +172,50 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.icon-size-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.icon-size-controls label {
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.icon-size-buttons {
+    display: flex;
+    gap: 2px;
+}
+
+.icon-size-btn {
+    padding: 6px 10px;
+    background: #444;
+    border: 1px solid #555;
+    color: #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.icon-size-btn:hover {
+    background: #555;
+    color: #fff;
+}
+
+.icon-size-btn.active {
+    background: #4a9eff;
+    border-color: #4a9eff;
+    color: #fff;
 }
 
 .header-buttons {
@@ -185,7 +229,46 @@ body {
     color: #fff;
 }
 
-/* Moved to the flexbox collections-list above */
+/* Icon Size Variations */
+.collections-list.icon-size-small .collection-item {
+    height: 100px;
+}
+
+.collections-list.icon-size-medium .collection-item {
+    height: 130px;
+}
+
+.collections-list.icon-size-large .collection-item {
+    height: 160px;
+}
+
+.collections-list.icon-size-small {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.collections-list.icon-size-medium {
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+}
+
+.collections-list.icon-size-large {
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+}
+
+/* Thumbnail size variations */
+.collections-list.icon-size-small .collection-thumbnail {
+    width: 120px;
+    height: 100px;
+}
+
+.collections-list.icon-size-medium .collection-thumbnail {
+    width: 160px;
+    height: 130px;
+}
+
+.collections-list.icon-size-large .collection-thumbnail {
+    width: 200px;
+    height: 160px;
+}
 
 .collection-item {
     background: #333;
@@ -506,16 +589,25 @@ body {
         font-size: 0.8rem;
     }
     
-    .collections-list {
+    .collections-list,
+    .collections-list.icon-size-small,
+    .collections-list.icon-size-medium,
+    .collections-list.icon-size-large {
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 12px;
     }
 
-    .collection-item {
+    .collection-item,
+    .collections-list.icon-size-small .collection-item,
+    .collections-list.icon-size-medium .collection-item,
+    .collections-list.icon-size-large .collection-item {
         height: 80px;
     }
 
-    .collection-thumbnail {
+    .collection-thumbnail,
+    .collections-list.icon-size-small .collection-thumbnail,
+    .collections-list.icon-size-medium .collection-thumbnail,
+    .collections-list.icon-size-large .collection-thumbnail {
         width: 100px;
         height: 80px;
     }
@@ -573,16 +665,25 @@ body {
         padding: 10px;
     }
     
-    .collections-list {
+    .collections-list,
+    .collections-list.icon-size-small,
+    .collections-list.icon-size-medium,
+    .collections-list.icon-size-large {
         grid-template-columns: 1fr;
         gap: 10px;
     }
 
-    .collection-item {
+    .collection-item,
+    .collections-list.icon-size-small .collection-item,
+    .collections-list.icon-size-medium .collection-item,
+    .collections-list.icon-size-large .collection-item {
         height: 60px;
     }
 
-    .collection-thumbnail {
+    .collection-thumbnail,
+    .collections-list.icon-size-small .collection-thumbnail,
+    .collections-list.icon-size-medium .collection-thumbnail,
+    .collections-list.icon-size-large .collection-thumbnail {
         width: 80px;
         height: 60px;
     }

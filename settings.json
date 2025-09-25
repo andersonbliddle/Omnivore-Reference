@@ -43300,7 +43300,7 @@
           "name": "Female Hero (212).jpg"
         }
       ],
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "1758766337338idzumya98",
@@ -48182,7 +48182,7 @@
           "name": "(132).jpg"
         }
       ],
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "1758766337447zn0rrob0n",
@@ -49104,7 +49104,7 @@
           "name": "Сессия без названия0353.JPG"
         }
       ],
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "1758766337554e2asp06zz",
@@ -50916,7 +50916,7 @@
           "name": "_~6607.jpg"
         }
       ],
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "175876633766349rl9qdoo",
@@ -51568,7 +51568,7 @@
           "name": "couples0462.JPG"
         }
       ],
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "1758766337774wiuueayul",
@@ -53045,7 +53045,7 @@
           "name": "Warrior925.jpg"
         }
       ],
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "17587663378837phl6b3xj",
@@ -55372,15 +55372,16 @@
           "name": "Everyday11528.JPG"
         }
       ],
-      "enabled": true
+      "enabled": false
     }
   ],
   "timerDuration": 60,
   "sessionLength": 10,
   "windowBounds": {
-    "x": -8,
-    "y": -8,
-    "width": 2576,
-    "height": 1416
-  }
+    "x": 314,
+    "y": 42,
+    "width": 1764,
+    "height": 1134
+  },
+  "iconSize": "small"
 }
