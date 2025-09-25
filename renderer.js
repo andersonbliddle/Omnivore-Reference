@@ -500,6 +500,7 @@ class DrawingReferenceApp {
             controlsHeader.style.display = 'none';
             collectionsSection.style.display = 'none';
             this.sessionOverlay.style.display = 'flex';
+            this.deleteSelectedBtn.style.display = 'none';
 
             this.updateProgress();
             this.updateSessionTimer();
@@ -508,6 +509,7 @@ class DrawingReferenceApp {
             controlsHeader.style.display = 'flex';
             collectionsSection.style.display = 'block';
             this.sessionOverlay.style.display = 'none';
+            // Delete button visibility is handled by updateDeleteButtonVisibility()
 
             this.startBtn.disabled = false;
             this.pauseBtn.disabled = true;
