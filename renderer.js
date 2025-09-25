@@ -8,7 +8,8 @@ class DrawingReferenceApp {
         this.isPaused = false;
         this.settings = {};
         this.allTags = new Set(); // Global tag bank
-        this.selectedTags = new Set(); // Currently filtered tags
+        this.selectedTags = new Set(); // Currently filtered tags (included)
+        this.excludedTags = new Set(); // Currently excluded tags
         
         // Zoom and pan state (persistent during session)
         this.zoom = 1;
@@ -533,11 +534,20 @@ class DrawingReferenceApp {
             return;
         }
 
-        // Filter collections by selected tags if any
+        // Filter collections by selected and excluded tags
         let filteredCollections = this.collections;
+
+        // Apply inclusion filter (all selected tags must be present)
         if (this.selectedTags.size > 0) {
-            filteredCollections = this.collections.filter(collection =>
+            filteredCollections = filteredCollections.filter(collection =>
                 [...this.selectedTags].every(tag => collection.tags.includes(tag))
+            );
+        }
+
+        // Apply exclusion filter (excluded tags must not be present)
+        if (this.excludedTags.size > 0) {
+            filteredCollections = filteredCollections.filter(collection =>
+                ![...this.excludedTags].some(tag => collection.tags.includes(tag))
             );
         }
 
@@ -1135,11 +1145,21 @@ class DrawingReferenceApp {
     getFilteredCollections() {
         // Return currently filtered collections (same logic as in renderCollections)
         let filteredCollections = this.collections;
+
+        // Apply inclusion filter (all selected tags must be present)
         if (this.selectedTags.size > 0) {
-            filteredCollections = this.collections.filter(collection =>
+            filteredCollections = filteredCollections.filter(collection =>
                 [...this.selectedTags].every(tag => collection.tags.includes(tag))
             );
         }
+
+        // Apply exclusion filter (excluded tags must not be present)
+        if (this.excludedTags.size > 0) {
+            filteredCollections = filteredCollections.filter(collection =>
+                ![...this.excludedTags].some(tag => collection.tags.includes(tag))
+            );
+        }
+
         return filteredCollections;
     }
 
@@ -1321,19 +1341,26 @@ class DrawingReferenceApp {
 
         if (this.allTags.size === 0) {
             tagFiltersContainer.innerHTML = '<span class="no-tags-text">No tags available</span>';
-            clearBtn.style.display = 'none';
+            clearBtn.style.display = 'block'; // Keep visible even with no tags
             return;
         }
 
         tagFiltersContainer.innerHTML = [...this.allTags].sort().map(tag => {
             const isSelected = this.selectedTags.has(tag);
-            return `<span class="filter-tag ${isSelected ? 'active' : ''}" onclick="app.toggleTagFilter('${tag}')">${tag}</span>`;
+            const isExcluded = this.excludedTags.has(tag);
+            let tagClass = 'filter-tag';
+            if (isSelected) tagClass += ' active';
+            if (isExcluded) tagClass += ' excluded';
+            return `<span class="${tagClass}" onclick="app.toggleTagFilter('${tag}')" oncontextmenu="event.preventDefault(); app.toggleTagExclusion('${tag}')">${tag}</span>`;
         }).join('');
 
-        clearBtn.style.display = this.selectedTags.size > 0 ? 'block' : 'none';
+        clearBtn.style.display = 'block'; // Always visible
     }
 
     toggleTagFilter(tag) {
+        // Remove from excluded if it's there
+        this.excludedTags.delete(tag);
+
         if (this.selectedTags.has(tag)) {
             this.selectedTags.delete(tag);
         } else {
@@ -1342,8 +1369,21 @@ class DrawingReferenceApp {
         this.renderCollections();
     }
 
+    toggleTagExclusion(tag) {
+        // Remove from selected if it's there
+        this.selectedTags.delete(tag);
+
+        if (this.excludedTags.has(tag)) {
+            this.excludedTags.delete(tag);
+        } else {
+            this.excludedTags.add(tag);
+        }
+        this.renderCollections();
+    }
+
     clearTagFilters() {
         this.selectedTags.clear();
+        this.excludedTags.clear();
         this.renderCollections();
     }
 

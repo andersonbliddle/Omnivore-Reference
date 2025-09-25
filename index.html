@@ -13,13 +13,20 @@
             <div class="app-title">
                 <h1>Drawing Reference</h1>
                 <div class="tag-filter-section">
-                    <label>Filter by tags:</label>
-                    <div id="tag-filters" class="tag-filters"></div>
-                    <button id="clear-filters" class="clear-filters-btn" style="display: none;">Clear Filters</button>
-                </div>
-                <div class="selection-buttons">
-                    <button id="select-all" class="selection-btn">Select All</button>
-                    <button id="deselect-all" class="selection-btn">Deselect All</button>
+                    <div class="filter-row">
+                        <label>Filter by tags:</label>
+                        <div class="filter-reminder">Left-click: include • Right-click: exclude</div>
+                    </div>
+                    <div class="filter-row">
+                        <div id="tag-filters" class="tag-filters"></div>
+                        <button id="clear-filters" class="clear-filters-btn">Clear Filters</button>
+                    </div>
+                    <div class="selection-buttons-box">
+                        <div class="selection-buttons">
+                            <button id="select-all" class="selection-btn">Select All</button>
+                            <button id="deselect-all" class="selection-btn">Deselect All</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
