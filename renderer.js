@@ -1215,20 +1215,18 @@ class DrawingReferenceApp {
         menu.style.left = Math.min(event.clientX, window.innerWidth - 320) + 'px';
         menu.style.top = Math.min(event.clientY, window.innerHeight - 300) + 'px';
 
-        // Populate current tags
-        this.currentTagsList.innerHTML = collection.tags.length > 0 ?
-            collection.tags.map(tag =>
-                `<span class="current-tag" onclick="event.stopPropagation(); app.removeTagFromCollection('${collectionId}', '${tag}')">${tag} ×</span>`
-            ).join('') :
-            '<span class="no-tags-text">No tags assigned</span>';
+        // Show all tags in a single pool with selected/unselected styling
+        const allTagsArray = [...this.allTags].sort();
+        this.currentTagsList.innerHTML = allTagsArray.length > 0 ?
+            allTagsArray.map(tag => {
+                const isSelected = collection.tags.includes(tag);
+                const tagClass = isSelected ? 'current-tag selected' : 'current-tag unselected';
+                return `<span class="${tagClass}" onclick="event.stopPropagation(); app.toggleTagForCollection('${collectionId}', '${tag}')">${tag}</span>`;
+            }).join('') :
+            '<span class="no-tags-text">No tags available</span>';
 
-        // Populate available tags (excluding current ones)
-        const availableTags = [...this.allTags].filter(tag => !collection.tags.includes(tag));
-        this.availableTagsList.innerHTML = availableTags.length > 0 ?
-            availableTags.map(tag =>
-                `<span class="available-tag" onclick="event.stopPropagation(); app.addTagToCollection('${collectionId}', '${tag}')">${tag}</span>`
-            ).join('') :
-            '<span class="no-tags-text">No additional tags available</span>';
+        // Hide the available tags section since we're using a single pool
+        this.availableTagsList.innerHTML = '';
 
         // Clear new tag input
         this.newTagInput.value = '';
@@ -1239,26 +1237,47 @@ class DrawingReferenceApp {
         this.currentContextCollectionId = null;
     }
 
+    toggleTagForCollection(collectionId, tag) {
+        const collection = this.collections.find(c => c.id === collectionId);
+        if (!collection) return;
+
+        if (collection.tags.includes(tag)) {
+            // Remove tag
+            collection.tags = collection.tags.filter(t => t !== tag);
+        } else {
+            // Add tag
+            collection.tags.push(tag);
+            this.allTags.add(tag);
+        }
+
+        this.rebuildTagBank();
+        this.renderCollections();
+        this.saveSettings();
+
+        // Refresh the context menu if it's open for this collection
+        if (this.currentContextCollectionId === collectionId && this.tagContextMenu.style.display === 'block') {
+            this.refreshTagContextMenu();
+        }
+    }
+
     refreshTagContextMenu() {
         if (!this.currentContextCollectionId) return;
 
         const collection = this.collections.find(c => c.id === this.currentContextCollectionId);
         if (!collection) return;
 
-        // Update current tags list
-        this.currentTagsList.innerHTML = collection.tags.length > 0 ?
-            collection.tags.map(tag =>
-                `<span class="current-tag" onclick="event.stopPropagation(); app.removeTagFromCollection('${this.currentContextCollectionId}', '${tag}')">${tag} ×</span>`
-            ).join('') :
-            '<span class="no-tags-text">No tags assigned</span>';
+        // Show all tags in a single pool with selected/unselected styling
+        const allTagsArray = [...this.allTags].sort();
+        this.currentTagsList.innerHTML = allTagsArray.length > 0 ?
+            allTagsArray.map(tag => {
+                const isSelected = collection.tags.includes(tag);
+                const tagClass = isSelected ? 'current-tag selected' : 'current-tag unselected';
+                return `<span class="${tagClass}" onclick="event.stopPropagation(); app.toggleTagForCollection('${this.currentContextCollectionId}', '${tag}')">${tag}</span>`;
+            }).join('') :
+            '<span class="no-tags-text">No tags available</span>';
 
-        // Update available tags list (excluding current ones)
-        const availableTags = [...this.allTags].filter(tag => !collection.tags.includes(tag));
-        this.availableTagsList.innerHTML = availableTags.length > 0 ?
-            availableTags.map(tag =>
-                `<span class="available-tag" onclick="event.stopPropagation(); app.addTagToCollection('${this.currentContextCollectionId}', '${tag}')">${tag}</span>`
-            ).join('') :
-            '<span class="no-tags-text">No additional tags available</span>';
+        // Hide the available tags section since we're using a single pool
+        this.availableTagsList.innerHTML = '';
     }
 
     addNewTag() {
@@ -1277,7 +1296,20 @@ class DrawingReferenceApp {
         }
 
         if (this.currentContextCollectionId) {
-            this.addTagToCollection(this.currentContextCollectionId, tagName);
+            // Add the new tag to the global tag bank
+            this.allTags.add(tagName);
+            // Add it to the current collection (always add when creating new tag)
+            const collection = this.collections.find(c => c.id === this.currentContextCollectionId);
+            if (collection && !collection.tags.includes(tagName)) {
+                collection.tags.push(tagName);
+                this.renderCollections();
+                this.saveSettings();
+
+                // Refresh the context menu to show the new tag
+                if (this.tagContextMenu.style.display === 'block') {
+                    this.refreshTagContextMenu();
+                }
+            }
             // Clear the input field after adding the tag
             this.newTagInput.value = '';
         }

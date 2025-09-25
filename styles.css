@@ -314,6 +314,25 @@ body {
     background: #ff4757;
 }
 
+.current-tag.selected {
+    background: #4a9eff;
+    color: white;
+}
+
+.current-tag.selected:hover {
+    background: #ff4757;
+}
+
+.current-tag.unselected {
+    background: #444;
+    color: #ccc;
+}
+
+.current-tag.unselected:hover {
+    background: #4a9eff;
+    color: white;
+}
+
 .available-tag {
     padding: 4px 8px;
     background: #444;
