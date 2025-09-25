@@ -15,7 +15,8 @@ class DrawingReferenceApp {
         this.isDragging = false;
         this.lastMouseX = 0;
         this.lastMouseY = 0;
-        
+        this.isReorderMode = false;
+
         this.initializeElements();
         this.bindEvents();
         this.loadSettings();
@@ -46,6 +47,7 @@ class DrawingReferenceApp {
         this.endSessionBtn = document.getElementById('end-session');
         this.sessionCounterEl = document.getElementById('session-counter');
         this.deleteSelectedBtn = document.getElementById('delete-selected');
+        this.reorderBtn = document.getElementById('reorder-collections');
     }
 
     bindEvents() {
@@ -55,6 +57,7 @@ class DrawingReferenceApp {
         this.addCollectionBtn.addEventListener('click', () => this.addCollection());
         this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
         this.deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedCollections());
+        this.reorderBtn.addEventListener('click', () => this.toggleReorderMode());
         
         // Zoom controls (removed from menu)
         
@@ -274,23 +277,31 @@ class DrawingReferenceApp {
     updateDeleteButton() {
         const enabledCollections = this.collections.filter(c => c.enabled);
         const hasEnabled = enabledCollections.length > 0;
-        
+
         this.deleteSelectedBtn.style.display = hasEnabled ? 'block' : 'none';
-        this.deleteSelectedBtn.textContent = `Delete ${enabledCollections.length} Enabled Collection${enabledCollections.length !== 1 ? 's' : ''}`;
+        this.deleteSelectedBtn.textContent = `Delete (${enabledCollections.length})`;
     }
 
     deleteSelectedCollections() {
         const enabledCollections = this.collections.filter(c => c.enabled);
-        
+
         if (enabledCollections.length === 0) return;
-        
+
         const collectionNames = enabledCollections.map(c => c.name);
-        
-        const confirmMessage = enabledCollections.length === 1 
+
+        // First confirmation
+        const firstConfirmMessage = enabledCollections.length === 1
             ? `Delete the collection "${collectionNames[0]}"?`
             : `Delete ${enabledCollections.length} collections?\n\n• ${collectionNames.join('\n• ')}`;
-            
-        if (confirm(confirmMessage)) {
+
+        if (!confirm(firstConfirmMessage)) return;
+
+        // Second confirmation for safety
+        const secondConfirmMessage = enabledCollections.length === 1
+            ? `Are you sure you want to permanently delete "${collectionNames[0]}"?\n\nThis action cannot be undone.`
+            : `Are you sure you want to permanently delete these ${enabledCollections.length} collections?\n\nThis action cannot be undone.`;
+
+        if (confirm(secondConfirmMessage)) {
             this.collections = this.collections.filter(c => !c.enabled);
             this.renderCollections();
             this.saveSettings();
@@ -502,6 +513,7 @@ class DrawingReferenceApp {
         // Hide/show sections based on session state
         const controlsHeader = document.querySelector('.controls-header');
         const collectionsSection = document.querySelector('.collections-section');
+        const drawingArea = document.querySelector('.drawing-area');
 
         if (hasSession) {
             // Hide menu sections during session
@@ -509,6 +521,8 @@ class DrawingReferenceApp {
             collectionsSection.style.display = 'none';
             this.sessionOverlay.style.display = 'flex';
             this.deleteSelectedBtn.style.display = 'none';
+            this.reorderBtn.style.display = 'none';
+            drawingArea.classList.add('session-active');
 
             this.updateProgress();
             this.updateSessionTimer();
@@ -517,7 +531,9 @@ class DrawingReferenceApp {
             controlsHeader.style.display = 'flex';
             collectionsSection.style.display = 'block';
             this.sessionOverlay.style.display = 'none';
-            // Delete button visibility is handled by updateDeleteButtonVisibility()
+            this.reorderBtn.style.display = 'block';
+            drawingArea.classList.remove('session-active');
+            this.updateDeleteButton(); // Fix: Ensure delete button is visible
 
             this.startBtn.disabled = false;
             this.pauseBtn.disabled = true;
@@ -564,6 +580,97 @@ class DrawingReferenceApp {
         const total = this.sessionImages.length;
 
         this.sessionCounterEl.textContent = `${current} / ${total}`;
+    }
+
+    toggleReorderMode() {
+        this.isReorderMode = !this.isReorderMode;
+
+        if (this.isReorderMode) {
+            this.reorderBtn.textContent = 'Save Order';
+            this.reorderBtn.classList.add('active');
+            this.enableDragAndDrop();
+        } else {
+            this.reorderBtn.textContent = 'Reorder';
+            this.reorderBtn.classList.remove('active');
+            this.disableDragAndDrop();
+            this.saveSettings();
+        }
+    }
+
+    enableDragAndDrop() {
+        const collectionItems = document.querySelectorAll('.collection-item');
+
+        collectionItems.forEach((item, index) => {
+            item.draggable = true;
+            item.style.cursor = 'grab';
+
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', index.toString());
+                item.style.opacity = '0.5';
+            });
+
+            item.addEventListener('dragend', (e) => {
+                item.style.opacity = '1';
+                item.style.cursor = 'grab';
+            });
+
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                item.style.cursor = 'grabbing';
+            });
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                const targetIndex = index;
+
+                if (draggedIndex !== targetIndex) {
+                    this.reorderCollections(draggedIndex, targetIndex);
+                }
+
+                item.style.cursor = 'grab';
+            });
+        });
+    }
+
+    disableDragAndDrop() {
+        const collectionItems = document.querySelectorAll('.collection-item');
+
+        collectionItems.forEach(item => {
+            item.draggable = false;
+            item.style.cursor = 'default';
+
+            // Remove all drag event listeners by cloning and replacing
+            const newItem = item.cloneNode(true);
+            item.parentNode.replaceChild(newItem, item);
+        });
+
+        // Re-bind checkbox events after cloning
+        this.bindCollectionCheckboxes();
+    }
+
+    bindCollectionCheckboxes() {
+        const checkboxes = document.querySelectorAll('.collection-item input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const collectionId = e.target.getAttribute('data-collection-id');
+                this.toggleCollection(collectionId);
+            });
+        });
+    }
+
+    reorderCollections(fromIndex, toIndex) {
+        // Move the collection in the array
+        const [movedCollection] = this.collections.splice(fromIndex, 1);
+        this.collections.splice(toIndex, 0, movedCollection);
+
+        // Re-render collections with new order
+        this.renderCollections();
+
+        // Re-enable drag and drop if still in reorder mode
+        if (this.isReorderMode) {
+            this.enableDragAndDrop();
+        }
     }
 }
 

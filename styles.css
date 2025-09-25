@@ -260,10 +260,16 @@ body {
 }
 
 
-.floating-delete-btn {
+.floating-buttons {
     position: fixed;
     bottom: 20px;
     right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.floating-delete-btn, .floating-reorder-btn {
     background: #555;
     color: white;
     border: none;
@@ -273,11 +279,32 @@ body {
     font-size: 0.9rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    z-index: 1000;
 }
 
 .floating-delete-btn:hover {
     background: #dc3545;
+}
+
+.floating-reorder-btn:hover {
+    background: #4a9eff;
+}
+
+.floating-reorder-btn.active {
+    background: #4a9eff;
+}
+
+/* Reorder mode styles */
+.collection-item[draggable="true"] {
+    transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.collection-item[draggable="true"]:hover {
+    transform: scale(1.02);
+}
+
+.collection-item.dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
 }
 
 /* Removed - now using single checkbox for both enable/disable and selection */
@@ -297,6 +324,11 @@ body {
     flex-direction: column;
     position: relative;
     overflow: hidden;
+}
+
+.drawing-area.session-active {
+    flex: 1;
+    height: auto;
 }
 
 .image-container {
@@ -463,9 +495,13 @@ body {
         min-width: 28px;
     }
     
-    .floating-delete-btn {
+    .floating-buttons {
         bottom: 15px;
         right: 15px;
+        gap: 8px;
+    }
+
+    .floating-delete-btn, .floating-reorder-btn {
         padding: 10px 16px;
         font-size: 0.8rem;
     }
