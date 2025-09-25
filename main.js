@@ -86,15 +86,15 @@ app.on('activate', () => {
   }
 });
 
-// Handle directory selection
+// Handle directory selection (supports multi-select)
 ipcMain.handle('select-directory', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory'],
-    title: 'Select Image Directory'
+    properties: ['openDirectory', 'multiSelections'],
+    title: 'Select Image Directories (Hold Ctrl/Cmd for multiple)'
   });
-  
+
   if (!result.canceled && result.filePaths.length > 0) {
-    return result.filePaths[0];
+    return result.filePaths; // Return array of selected paths
   }
   return null;
 });

@@ -244,33 +244,135 @@ class DrawingReferenceApp {
 
     async addCollection() {
         try {
-            const directoryPath = await window.electronAPI.selectDirectory();
-            if (!directoryPath) return;
+            const directoryPaths = await window.electronAPI.selectDirectory();
+            if (!directoryPaths || directoryPaths.length === 0) return;
 
-            const result = await window.electronAPI.getImagesFromDirectory(directoryPath);
-            
-            if (result.images.length === 0) {
-                alert('No images found in the selected directory.');
-                return;
+            // Handle single directory (backward compatibility)
+            const paths = Array.isArray(directoryPaths) ? directoryPaths : [directoryPaths];
+
+            if (paths.length === 1) {
+                // Single directory - same as before
+                await this.addSingleCollection(paths[0]);
+            } else {
+                // Multiple directories - show progress
+                await this.addMultipleCollections(paths);
             }
 
-            const dirName = directoryPath.split(/[\\/]/).pop();
-            const collection = {
-                id: Date.now().toString(),
-                name: dirName,
-                path: directoryPath,
-                images: result.images,
-                previews: result.previews,
-                enabled: true
-            };
-
-            this.collections.push(collection);
-            this.renderCollections();
-            this.saveSettings();
-            
         } catch (error) {
-            console.error('Error adding collection:', error);
-            alert('Error adding collection. Please try again.');
+            console.error('Error adding collection(s):', error);
+            alert('Error adding collection(s). Please try again.');
+        }
+    }
+
+    async addSingleCollection(directoryPath) {
+        const result = await window.electronAPI.getImagesFromDirectory(directoryPath);
+
+        if (result.images.length === 0) {
+            alert(`No images found in "${directoryPath.split(/[\\/]/).pop()}".`);
+            return;
+        }
+
+        const dirName = directoryPath.split(/[\\/]/).pop();
+        const collection = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            name: dirName,
+            path: directoryPath,
+            images: result.images,
+            previews: result.previews,
+            enabled: true
+        };
+
+        this.collections.push(collection);
+        this.renderCollections();
+        this.saveSettings();
+    }
+
+    async addMultipleCollections(directoryPaths) {
+        const totalPaths = directoryPaths.length;
+        let processed = 0;
+        let successful = 0;
+        let skipped = 0;
+
+        // Show progress indicator
+        this.showProgressIndicator(`Processing ${totalPaths} directories...`);
+
+        for (const directoryPath of directoryPaths) {
+            try {
+                const dirName = directoryPath.split(/[\\/]/).pop();
+                this.updateProgressIndicator(`Processing "${dirName}"... (${processed + 1}/${totalPaths})`);
+
+                const result = await window.electronAPI.getImagesFromDirectory(directoryPath);
+
+                if (result.images.length === 0) {
+                    skipped++;
+                } else {
+                    const collection = {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        name: dirName,
+                        path: directoryPath,
+                        images: result.images,
+                        previews: result.previews,
+                        enabled: true
+                    };
+
+                    this.collections.push(collection);
+                    successful++;
+                }
+
+                processed++;
+
+                // Small delay to show progress
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+            } catch (error) {
+                console.error(`Error processing ${directoryPath}:`, error);
+                processed++;
+                skipped++;
+            }
+        }
+
+        this.hideProgressIndicator();
+        this.renderCollections();
+        this.saveSettings();
+
+        // Show summary
+        let message = `Added ${successful} collection(s) successfully.`;
+        if (skipped > 0) {
+            message += `\n${skipped} director${skipped === 1 ? 'y' : 'ies'} skipped (no images found or error).`;
+        }
+        alert(message);
+    }
+
+    showProgressIndicator(message) {
+        // Create progress overlay if it doesn't exist
+        let progressOverlay = document.getElementById('progress-overlay');
+        if (!progressOverlay) {
+            progressOverlay = document.createElement('div');
+            progressOverlay.id = 'progress-overlay';
+            progressOverlay.innerHTML = `
+                <div class="progress-content">
+                    <div class="progress-spinner"></div>
+                    <div class="progress-message" id="progress-message"></div>
+                </div>
+            `;
+            document.body.appendChild(progressOverlay);
+        }
+
+        document.getElementById('progress-message').textContent = message;
+        progressOverlay.style.display = 'flex';
+    }
+
+    updateProgressIndicator(message) {
+        const progressMessage = document.getElementById('progress-message');
+        if (progressMessage) {
+            progressMessage.textContent = message;
+        }
+    }
+
+    hideProgressIndicator() {
+        const progressOverlay = document.getElementById('progress-overlay');
+        if (progressOverlay) {
+            progressOverlay.style.display = 'none';
         }
     }
 
