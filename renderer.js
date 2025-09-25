@@ -73,6 +73,18 @@ class DrawingReferenceApp {
         this.clearFiltersBtn = document.getElementById('clear-filters');
         this.currentContextCollectionId = null;
 
+        // Mass tag management elements
+        this.addTagToSelectedBtn = document.getElementById('add-tag-to-selected');
+        this.removeTagFromSelectedBtn = document.getElementById('remove-tag-from-selected');
+        this.massTagAddDialog = document.getElementById('mass-tag-add-dialog');
+        this.massTagRemoveDialog = document.getElementById('mass-tag-remove-dialog');
+        this.massAddTagInput = document.getElementById('mass-add-tag-input');
+        this.createAndAddTagBtn = document.getElementById('create-and-add-tag');
+        this.massAddExistingTags = document.getElementById('mass-add-existing-tags');
+        this.massRemoveTagsList = document.getElementById('mass-remove-tags-list');
+        this.cancelMassAddBtn = document.getElementById('cancel-mass-add');
+        this.cancelMassRemoveBtn = document.getElementById('cancel-mass-remove');
+
         // Icon size controls
         this.iconSizeButtons = document.querySelectorAll('.icon-size-btn');
     }
@@ -88,20 +100,50 @@ class DrawingReferenceApp {
         this.selectAllBtn.addEventListener('click', () => this.selectAllCollections());
         this.deselectAllBtn.addEventListener('click', () => this.deselectAllCollections());
 
+        // Mass tag management events
+        this.addTagToSelectedBtn.addEventListener('click', () => this.showMassAddTagDialog());
+        this.removeTagFromSelectedBtn.addEventListener('click', () => this.showMassRemoveTagDialog());
+        this.createAndAddTagBtn.addEventListener('click', () => this.createAndAddTag());
+        this.cancelMassAddBtn.addEventListener('click', () => this.hideMassAddTagDialog());
+        this.cancelMassRemoveBtn.addEventListener('click', () => this.hideMassRemoveTagDialog());
+        // Create a reusable handler for the mass add tag input
+        this.massTagInputHandler = (e) => {
+            if (e.key === 'Enter') {
+                this.createAndAddTag();
+            }
+        };
+        this.ensureMassTagInputEventListener();
+
         // Tag management events
         this.addTagBtn.addEventListener('click', () => this.addNewTag());
         this.closeTagMenuBtn.addEventListener('click', () => this.hideTagContextMenu());
         this.clearFiltersBtn.addEventListener('click', () => this.clearTagFilters());
-        this.newTagInput.addEventListener('keypress', (e) => {
+        // Create a reusable handler for the tag input
+        this.tagInputHandler = (e) => {
             if (e.key === 'Enter') {
                 this.addNewTag();
             }
-        });
+        };
+        this.newTagInput.addEventListener('keypress', this.tagInputHandler);
 
         // Click outside to close context menu
         document.addEventListener('click', (e) => {
             if (!this.tagContextMenu.contains(e.target)) {
                 this.hideTagContextMenu();
+            }
+        });
+
+        // Click outside to close mass tag dialogs
+        document.addEventListener('click', (e) => {
+            if (this.massTagAddDialog.style.display === 'flex' &&
+                !e.target.closest('.dialog-content') &&
+                !e.target.closest('#add-tag-to-selected')) {
+                this.hideMassAddTagDialog();
+            }
+            if (this.massTagRemoveDialog.style.display === 'flex' &&
+                !e.target.closest('.dialog-content') &&
+                !e.target.closest('#remove-tag-from-selected')) {
+                this.hideMassRemoveTagDialog();
             }
         });
 
@@ -485,6 +527,10 @@ class DrawingReferenceApp {
 
         this.deleteSelectedBtn.style.display = hasEnabled ? 'block' : 'none';
         this.deleteSelectedBtn.textContent = `Delete (${enabledCollections.length})`;
+
+        // Show/hide mass tag buttons
+        this.addTagToSelectedBtn.style.display = hasEnabled ? 'block' : 'none';
+        this.removeTagFromSelectedBtn.style.display = hasEnabled ? 'block' : 'none';
     }
 
     deleteSelectedCollections() {
@@ -1249,7 +1295,10 @@ class DrawingReferenceApp {
         this.availableTagsList.innerHTML = '';
 
         // Clear new tag input
-        this.newTagInput.value = '';
+        const newTagInput = document.getElementById('new-tag-input');
+        if (newTagInput) {
+            newTagInput.value = '';
+        }
     }
 
     hideTagContextMenu() {
@@ -1298,10 +1347,83 @@ class DrawingReferenceApp {
 
         // Hide the available tags section since we're using a single pool
         this.availableTagsList.innerHTML = '';
+
+        // Ensure the input element still has its event listener
+        this.ensureTagInputEventListener();
+    }
+
+    reinitializeTagElements() {
+        // Re-get all tag-related element references
+        this.newTagInput = document.getElementById('new-tag-input');
+        this.addTagBtn = document.getElementById('add-tag-btn');
+        this.tagContextMenu = document.getElementById('tag-context-menu');
+        this.currentTagsList = document.getElementById('current-tags-list');
+
+        // Re-bind the tag input event listener
+        this.ensureTagInputEventListener();
+        this.ensureMassTagInputEventListener();
+
+        console.log('Reinitialized tag elements:', {
+            newTagInput: !!this.newTagInput,
+            addTagBtn: !!this.addTagBtn,
+            tagContextMenu: !!this.tagContextMenu
+        });
+    }
+
+    ensureMassTagInputEventListener() {
+        // Always get fresh element reference
+        const massAddTagInput = document.getElementById('mass-add-tag-input');
+
+        if (massAddTagInput) {
+            // Remove existing listener first to avoid duplicates
+            massAddTagInput.removeEventListener('keypress', this.massTagInputHandler);
+            // Re-add the listener
+            if (!this.massTagInputHandler) {
+                this.massTagInputHandler = (e) => {
+                    if (e.key === 'Enter') {
+                        this.createAndAddTag();
+                    }
+                };
+            }
+            massAddTagInput.addEventListener('keypress', this.massTagInputHandler);
+            console.log('Mass tag input event listener re-bound successfully');
+        } else {
+            console.warn('massAddTagInput element not found');
+        }
+    }
+
+    ensureTagInputEventListener() {
+        // Always get fresh element reference
+        const newTagInput = document.getElementById('new-tag-input');
+
+        if (newTagInput) {
+            // Remove existing listener first to avoid duplicates
+            newTagInput.removeEventListener('keypress', this.tagInputHandler);
+            // Re-add the listener
+            if (!this.tagInputHandler) {
+                this.tagInputHandler = (e) => {
+                    if (e.key === 'Enter') {
+                        this.addNewTag();
+                    }
+                };
+            }
+            newTagInput.addEventListener('keypress', this.tagInputHandler);
+            console.log('Individual tag input event listener re-bound successfully');
+        } else {
+            console.warn('newTagInput element not found - may have been destroyed');
+        }
     }
 
     addNewTag() {
-        const tagName = this.newTagInput.value.trim();
+        // Always get fresh element reference - don't rely on stored references
+        const newTagInput = document.getElementById('new-tag-input');
+
+        if (!newTagInput) {
+            console.error('newTagInput element not found in addNewTag');
+            return;
+        }
+
+        const tagName = newTagInput.value.trim();
         if (!tagName || tagName.length === 0) return;
 
         // Validate tag name
@@ -1328,10 +1450,17 @@ class DrawingReferenceApp {
                 // Refresh the context menu to show the new tag
                 if (this.tagContextMenu.style.display === 'block') {
                     this.refreshTagContextMenu();
+                    // Restore focus to the input after refresh
+                    setTimeout(() => {
+                        const freshInput = document.getElementById('new-tag-input');
+                        if (freshInput) {
+                            freshInput.focus();
+                        }
+                    }, 50);
                 }
             }
             // Clear the input field after adding the tag
-            this.newTagInput.value = '';
+            newTagInput.value = '';
         }
     }
 
@@ -1409,6 +1538,156 @@ class DrawingReferenceApp {
             console.error('Error clearing cache:', error);
             alert('Error clearing cache. Check console for details.');
         }
+    }
+
+    // Mass Tag Management Methods
+    showMassAddTagDialog() {
+        // Populate existing tags
+        const existingTags = [...this.allTags].sort();
+        this.massAddExistingTags.innerHTML = existingTags.length > 0 ?
+            existingTags.map(tag =>
+                `<span class="tag-option" onclick="app.addTagToSelected('${tag}')">${tag}</span>`
+            ).join('') :
+            '<span style="color: #888; font-style: italic;">No existing tags</span>';
+
+        // Clear input and show dialog
+        const massAddTagInput = document.getElementById('mass-add-tag-input');
+        if (massAddTagInput) {
+            massAddTagInput.value = '';
+        }
+        this.massTagAddDialog.style.display = 'flex';
+
+        // Ensure the mass add input has its event listener
+        setTimeout(() => {
+            this.ensureMassTagInputEventListener();
+        }, 100);
+    }
+
+    hideMassAddTagDialog() {
+        this.massTagAddDialog.style.display = 'none';
+        // Re-initialize individual tag input elements after mass operations
+        this.reinitializeTagElements();
+    }
+
+    showMassRemoveTagDialog() {
+        const selectedCollections = this.collections.filter(c => c.enabled);
+
+        // Get all tags present in selected collections
+        const tagsInSelected = new Set();
+        selectedCollections.forEach(collection => {
+            collection.tags.forEach(tag => tagsInSelected.add(tag));
+        });
+
+        const sortedTags = [...tagsInSelected].sort();
+        this.massRemoveTagsList.innerHTML = sortedTags.length > 0 ?
+            sortedTags.map(tag =>
+                `<span class="tag-option" onclick="app.removeTagFromSelected('${tag}')">${tag}</span>`
+            ).join('') :
+            '<span style="color: #888; font-style: italic;">No tags to remove</span>';
+
+        this.massTagRemoveDialog.style.display = 'flex';
+    }
+
+    hideMassRemoveTagDialog() {
+        this.massTagRemoveDialog.style.display = 'none';
+        // Re-initialize individual tag input elements after mass operations
+        this.reinitializeTagElements();
+    }
+
+    createAndAddTag() {
+        // Always get fresh element reference
+        const massAddTagInput = document.getElementById('mass-add-tag-input');
+        if (!massAddTagInput) {
+            console.error('massAddTagInput element not found');
+            return;
+        }
+
+        const tagName = massAddTagInput.value.trim();
+        if (!tagName || tagName.length === 0) return;
+
+        // Validate tag name
+        if (tagName.length > 20) {
+            alert('Tag name must be 20 characters or less');
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9\-_\s]+$/.test(tagName)) {
+            alert('Tag names can only contain letters, numbers, spaces, hyphens, and underscores');
+            return;
+        }
+
+        this.addTagToSelected(tagName);
+    }
+
+    addTagToSelected(tagName) {
+        const selectedCollections = this.collections.filter(c => c.enabled);
+
+        if (selectedCollections.length === 0) {
+            this.hideMassAddTagDialog();
+            return;
+        }
+
+        let addedCount = 0;
+        selectedCollections.forEach(collection => {
+            if (!collection.tags.includes(tagName)) {
+                collection.tags.push(tagName);
+                addedCount++;
+            }
+        });
+
+        // Add to global tag bank
+        this.allTags.add(tagName);
+
+        this.rebuildTagBank();
+        this.renderCollections();
+        this.saveSettings();
+
+        this.hideMassAddTagDialog();
+
+        if (addedCount > 0) {
+            const message = addedCount === selectedCollections.length ?
+                `Added "${tagName}" to all ${selectedCollections.length} selected collection(s).` :
+                `Added "${tagName}" to ${addedCount} of ${selectedCollections.length} selected collection(s). ${selectedCollections.length - addedCount} already had this tag.`;
+            alert(message);
+        } else {
+            alert(`All selected collections already have the tag "${tagName}".`);
+        }
+
+        // Ensure individual tag input is working after mass operations
+        this.reinitializeTagElements();
+    }
+
+    removeTagFromSelected(tagName) {
+        const selectedCollections = this.collections.filter(c => c.enabled);
+
+        if (selectedCollections.length === 0) {
+            this.hideMassRemoveTagDialog();
+            return;
+        }
+
+        let removedCount = 0;
+        selectedCollections.forEach(collection => {
+            const tagIndex = collection.tags.indexOf(tagName);
+            if (tagIndex > -1) {
+                collection.tags.splice(tagIndex, 1);
+                removedCount++;
+            }
+        });
+
+        this.rebuildTagBank();
+        this.renderCollections();
+        this.saveSettings();
+
+        this.hideMassRemoveTagDialog();
+
+        if (removedCount > 0) {
+            alert(`Removed "${tagName}" from ${removedCount} collection(s).`);
+        } else {
+            alert(`None of the selected collections had the tag "${tagName}".`);
+        }
+
+        // Ensure individual tag input is working after mass operations
+        this.reinitializeTagElements();
     }
 }
 

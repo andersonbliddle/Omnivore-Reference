@@ -19,13 +19,11 @@
                     </div>
                     <div class="filter-row">
                         <div id="tag-filters" class="tag-filters"></div>
-                        <button id="clear-filters" class="clear-filters-btn">Clear Filters</button>
                     </div>
-                    <div class="selection-buttons-box">
-                        <div class="selection-buttons">
-                            <button id="select-all" class="selection-btn">Select All</button>
-                            <button id="deselect-all" class="selection-btn">Deselect All</button>
-                        </div>
+                    <div class="selection-buttons">
+                        <button id="select-all" class="selection-btn">Select All</button>
+                        <button id="deselect-all" class="selection-btn">Deselect All</button>
+                        <button id="clear-filters" class="clear-filters-btn">Clear Filters</button>
                     </div>
                 </div>
             </div>
@@ -118,8 +116,14 @@
         
         <!-- Floating Action Buttons -->
         <div class="floating-buttons">
-            <button id="reorder-collections" class="floating-reorder-btn">Reorder</button>
-            <button id="delete-selected" class="floating-delete-btn" style="display: none;">Delete Selected Collections</button>
+            <div class="floating-left">
+                <button id="add-tag-to-selected" class="floating-tag-btn" style="display: none;">Add Tag</button>
+                <button id="remove-tag-from-selected" class="floating-tag-btn" style="display: none;">Remove Tag</button>
+            </div>
+            <div class="floating-right">
+                <button id="reorder-collections" class="floating-reorder-btn">Reorder</button>
+                <button id="delete-selected" class="floating-delete-btn" style="display: none;">Delete Selected Collections</button>
+            </div>
         </div>
 
         <!-- Tag Context Menu -->
@@ -141,6 +145,40 @@
             </div>
             <div class="context-menu-actions">
                 <button id="close-tag-menu" class="context-close-btn">Close</button>
+            </div>
+        </div>
+
+        <!-- Mass Tag Add Dialog -->
+        <div id="mass-tag-add-dialog" class="mass-tag-dialog" style="display: none;">
+            <div class="dialog-content">
+                <div class="dialog-header">Add Tag to Selected Collections</div>
+                <div class="dialog-body">
+                    <div class="tag-input-section">
+                        <input type="text" id="mass-add-tag-input" placeholder="Enter tag name..." maxlength="20">
+                        <button id="create-and-add-tag" class="dialog-btn primary">Create & Add</button>
+                    </div>
+                    <div class="existing-tags-section">
+                        <div class="section-title">Or select from existing tags:</div>
+                        <div id="mass-add-existing-tags" class="existing-tags-list"></div>
+                    </div>
+                </div>
+                <div class="dialog-actions">
+                    <button id="cancel-mass-add" class="dialog-btn secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mass Tag Remove Dialog -->
+        <div id="mass-tag-remove-dialog" class="mass-tag-dialog" style="display: none;">
+            <div class="dialog-content">
+                <div class="dialog-header">Remove Tag from Selected Collections</div>
+                <div class="dialog-body">
+                    <div class="section-title">Select tags to remove:</div>
+                    <div id="mass-remove-tags-list" class="existing-tags-list"></div>
+                </div>
+                <div class="dialog-actions">
+                    <button id="cancel-mass-remove" class="dialog-btn secondary">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
