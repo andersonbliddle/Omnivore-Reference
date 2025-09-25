@@ -163,7 +163,7 @@ body {
     flex: 1;
     overflow-y: auto;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 15px;
 }
 
@@ -193,8 +193,8 @@ body {
     border-radius: 8px;
     overflow: hidden;
     display: flex;
-    flex-direction: column;
-    height: 80px;
+    flex-direction: row;
+    height: 100px;
 }
 
 .collection-item.active {
@@ -208,6 +208,8 @@ body {
     align-items: center;
     gap: 10px;
     background: rgba(0, 0, 0, 0.2);
+    flex: 1;
+    min-width: 0;
 }
 
 .collection-toggle input[type="checkbox"] {
@@ -227,6 +229,34 @@ body {
 .collection-count {
     font-size: 0.75rem;
     color: #aaa;
+}
+
+.collection-thumbnail {
+    width: 120px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.collection-thumbnail img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 4px;
+    opacity: 0.8;
+}
+
+.collection-thumbnail .no-image {
+    color: #666;
+    font-size: 0.8rem;
+    text-align: center;
 }
 
 
@@ -441,12 +471,17 @@ body {
     }
     
     .collections-list {
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 12px;
     }
-    
+
     .collection-item {
-        height: 60px;
+        height: 80px;
+    }
+
+    .collection-thumbnail {
+        width: 100px;
+        height: 80px;
     }
     
     .collection-header {
@@ -506,9 +541,14 @@ body {
         grid-template-columns: 1fr;
         gap: 10px;
     }
-    
+
     .collection-item {
-        height: 50px;
+        height: 60px;
+    }
+
+    .collection-thumbnail {
+        width: 80px;
+        height: 60px;
     }
     
     .collection-header {

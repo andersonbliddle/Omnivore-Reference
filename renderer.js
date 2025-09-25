@@ -318,6 +318,11 @@ class DrawingReferenceApp {
         }
 
         this.collectionsListEl.innerHTML = this.collections.map(collection => {
+            const firstImage = collection.images && collection.images.length > 0 ? collection.images[0] : null;
+            const thumbnailHtml = firstImage ?
+                `<img src="${this.formatImagePath(firstImage.path)}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">` :
+                '<div class="no-image">No images</div>';
+
             return `
                 <div class="collection-item ${collection.enabled ? 'active' : ''}">
                     <div class="collection-header">
@@ -330,6 +335,9 @@ class DrawingReferenceApp {
                             <div class="collection-name">${collection.name}</div>
                             <div class="collection-count">${collection.images.length} images</div>
                         </div>
+                    </div>
+                    <div class="collection-thumbnail">
+                        ${thumbnailHtml}
                     </div>
                 </div>
             `;
