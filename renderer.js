@@ -283,7 +283,7 @@ class DrawingReferenceApp {
         try {
             if (window.electronAPI) {
                 this.settings = await window.electronAPI.loadSettings();
-                
+
                 // Restore collections
                 this.collections = this.settings.collections || [];
                 // Ensure all collections have tags array (backward compatibility)
@@ -294,12 +294,17 @@ class DrawingReferenceApp {
                 });
                 this.rebuildTagBank();
                 this.renderCollections();
-                
+
                 // Restore UI settings
                 this.timerDurationInput.value = this.settings.timerDuration || 60;
                 this.sessionLengthInput.value = this.settings.sessionLength || 10;
                 this.iconSize = this.settings.iconSize || 'small';
                 this.updateIconSizeButtons();
+
+                // Ensure thumbnails load on initial startup
+                setTimeout(() => {
+                    this.loadPendingThumbnails();
+                }, 100);
             }
         } catch (error) {
             console.error('Error loading settings:', error);
@@ -617,37 +622,85 @@ class DrawingReferenceApp {
     }
 
     async loadPendingThumbnails() {
-        // Find all collections with placeholder thumbnails
+        // Find all collections with placeholder thumbnails or missing thumbnail data
         const placeholders = this.collectionsListEl.querySelectorAll('.no-image.placeholder');
 
-        for (const placeholder of placeholders) {
-            const collectionItem = placeholder.closest('.collection-item');
-            const collectionId = collectionItem.getAttribute('data-collection-id');
+        // Also look for collections that should have thumbnails but don't show them
+        const allCollectionItems = this.collectionsListEl.querySelectorAll('.collection-item');
+        const itemsNeedingThumbnails = [];
+
+        allCollectionItems.forEach(item => {
+            const collectionId = item.getAttribute('data-collection-id');
             const collection = this.collections.find(c => c.id === collectionId);
 
             if (collection && collection.previews && collection.previews.length > 0) {
                 const preview = collection.previews[0];
-                if (preview && !preview.thumbnailData) {
-                    try {
-                        // Request thumbnail from main process
-                        const thumbnailData = await window.electronAPI.getThumbnail(preview.path);
-                        if (thumbnailData) {
-                            // Update the collection data
-                            preview.thumbnailData = thumbnailData;
+                const thumbnailContainer = item.querySelector('.collection-thumbnail');
 
-                            // Update the DOM
-                            placeholder.outerHTML = `<img src="${thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">`;
-                        } else {
-                            placeholder.textContent = 'No preview';
-                            placeholder.classList.remove('placeholder');
-                        }
-                    } catch (error) {
-                        console.error('Error loading thumbnail:', error);
+                // Check if thumbnail data exists but image isn't displayed
+                if (preview && !preview.thumbnailData && thumbnailContainer) {
+                    itemsNeedingThumbnails.push({ item, collection, preview });
+                }
+            }
+        });
+
+        // Process placeholders first
+        for (const placeholder of placeholders) {
+            await this.loadThumbnailForPlaceholder(placeholder);
+        }
+
+        // Process items that need thumbnails but aren't showing placeholders
+        for (const { item, collection, preview } of itemsNeedingThumbnails) {
+            await this.loadThumbnailForItem(item, collection, preview);
+        }
+    }
+
+    async loadThumbnailForPlaceholder(placeholder) {
+        const collectionItem = placeholder.closest('.collection-item');
+        const collectionId = collectionItem.getAttribute('data-collection-id');
+        const collection = this.collections.find(c => c.id === collectionId);
+
+        if (collection && collection.previews && collection.previews.length > 0) {
+            const preview = collection.previews[0];
+            if (preview && !preview.thumbnailData) {
+                try {
+                    // Request thumbnail from main process
+                    const thumbnailData = await window.electronAPI.getThumbnail(preview.path);
+                    if (thumbnailData) {
+                        // Update the collection data
+                        preview.thumbnailData = thumbnailData;
+
+                        // Update the DOM
+                        placeholder.outerHTML = `<img src="${thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">`;
+                    } else {
                         placeholder.textContent = 'No preview';
                         placeholder.classList.remove('placeholder');
                     }
+                } catch (error) {
+                    console.error('Error loading thumbnail:', error);
+                    placeholder.textContent = 'No preview';
+                    placeholder.classList.remove('placeholder');
                 }
             }
+        }
+    }
+
+    async loadThumbnailForItem(item, collection, preview) {
+        try {
+            // Request thumbnail from main process
+            const thumbnailData = await window.electronAPI.getThumbnail(preview.path);
+            if (thumbnailData) {
+                // Update the collection data
+                preview.thumbnailData = thumbnailData;
+
+                // Find and update the thumbnail container
+                const thumbnailContainer = item.querySelector('.collection-thumbnail');
+                if (thumbnailContainer) {
+                    thumbnailContainer.innerHTML = `<img src="${thumbnailData}" alt="Preview" onerror="this.parentElement.innerHTML='<div class=\\'no-image\\'>No preview</div>'">`;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading thumbnail for item:', error);
         }
     }
 
@@ -1114,8 +1167,20 @@ class DrawingReferenceApp {
         this.saveSettings();
     }
 
+    getFilteredCollections() {
+        // Return currently filtered collections (same logic as in renderCollections)
+        let filteredCollections = this.collections;
+        if (this.selectedTags.size > 0) {
+            filteredCollections = this.collections.filter(collection =>
+                [...this.selectedTags].every(tag => collection.tags.includes(tag))
+            );
+        }
+        return filteredCollections;
+    }
+
     selectAllCollections() {
-        this.collections.forEach(collection => {
+        const filteredCollections = this.getFilteredCollections();
+        filteredCollections.forEach(collection => {
             collection.enabled = true;
         });
         this.renderCollections();
@@ -1123,7 +1188,8 @@ class DrawingReferenceApp {
     }
 
     deselectAllCollections() {
-        this.collections.forEach(collection => {
+        const filteredCollections = this.getFilteredCollections();
+        filteredCollections.forEach(collection => {
             collection.enabled = false;
         });
         this.renderCollections();
