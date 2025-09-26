@@ -9,6 +9,38 @@ body {
     background: #1a1a1a;
     color: #ffffff;
     overflow: auto;
+    /* Disable text selection and image dragging to allow drag selection from anywhere */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Disable image dragging globally */
+img {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+
+/* Disable pointer events for collection thumbnails only */
+.collection-thumbnail img {
+    pointer-events: none;
+}
+
+/* Re-enable pointer events for session images (for zoom/pan) */
+.drawing-area img {
+    pointer-events: auto;
+}
+
+/* Re-enable text selection for input fields */
+input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
 }
 
 .app-container {

@@ -26,6 +26,8 @@ class DrawingReferenceApp {
         this.selectionStart = { x: 0, y: 0 };
         this.selectionEnd = { x: 0, y: 0 };
         this.selectionRect = null;
+        this.dragStartedOnCollection = false;
+        this.dragStartTime = 0;
 
         this.initializeElements();
         this.bindEvents();
@@ -634,7 +636,6 @@ class DrawingReferenceApp {
                 // Large layout: vertical, full card clickable
                 return `
                     <div class="collection-item ${collection.enabled ? 'active' : ''}"
-                         onclick="app.toggleCollection('${collection.id}')"
                          oncontextmenu="app.showTagContextMenu(event, '${collection.id}')"
                          data-collection-id="${collection.id}">
                         <div class="collection-header">
@@ -653,7 +654,6 @@ class DrawingReferenceApp {
                 // Small layout: no thumbnail, square-ish shape
                 return `
                     <div class="collection-item ${collection.enabled ? 'active' : ''}"
-                         onclick="app.toggleCollection('${collection.id}')"
                          oncontextmenu="app.showTagContextMenu(event, '${collection.id}')"
                          data-collection-id="${collection.id}">
                         <div class="collection-info">
@@ -667,7 +667,6 @@ class DrawingReferenceApp {
                 // Medium layout: horizontal with thumbnail
                 return `
                     <div class="collection-item ${collection.enabled ? 'active' : ''}"
-                         onclick="app.toggleCollection('${collection.id}')"
                          oncontextmenu="app.showTagContextMenu(event, '${collection.id}')"
                          data-collection-id="${collection.id}">
                         <div class="collection-header">
@@ -1060,24 +1059,21 @@ class DrawingReferenceApp {
     }
 
     startDragSelection(e) {
-        // Don't start drag selection during reorder mode, sessions, or when clicking interactive elements
+        // Only prevent drag selection for very specific interactive elements
         if (this.isReorderMode || this.currentSession ||
             e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' ||
-            e.target.closest('.header-controls') ||
-            e.target.closest('.controls-header') ||
-            e.target.closest('.session-overlay') ||
-            e.target.closest('.floating-buttons')) {
+            e.target.tagName === 'TEXTAREA' ||
+            e.target.closest('.tag-context-menu') ||
+            e.target.closest('.mass-tag-dialog') ||
+            e.target.closest('.custom-modal')) {
             return;
         }
 
-        // Don't start drag selection if clicking on a collection item (let the click handler work)
-        if (e.target.closest('.collection-item')) {
-            return;
-        }
-
-        // Allow drag selection from anywhere in the app, but only show collections if they exist
+        // Start drag selection from anywhere, including collection items
         if (this.collections.length > 0) {
             this.isDragSelecting = true;
+            this.dragStartedOnCollection = !!e.target.closest('.collection-item');
+            this.dragStartTime = Date.now();
 
             // Use viewport coordinates for full-app dragging
             this.selectionStart = {
@@ -1105,6 +1101,26 @@ class DrawingReferenceApp {
 
     endDragSelection(e) {
         if (!this.isDragSelecting) return;
+
+        const dragDistance = Math.sqrt(
+            Math.pow(e.clientX - this.selectionStart.x, 2) +
+            Math.pow(e.clientY - this.selectionStart.y, 2)
+        );
+        const dragDuration = Date.now() - this.dragStartTime;
+
+        // If drag started on a collection and was a short drag (< 5 pixels, < 200ms), treat as click
+        if (this.dragStartedOnCollection && dragDistance < 5 && dragDuration < 200) {
+            this.isDragSelecting = false;
+            this.removeSelectionRectangle();
+
+            // Trigger the collection click
+            const collectionItem = e.target.closest('.collection-item');
+            if (collectionItem) {
+                const collectionId = collectionItem.getAttribute('data-collection-id');
+                this.toggleCollection(collectionId);
+            }
+            return;
+        }
 
         this.isDragSelecting = false;
         this.removeSelectionRectangle();
