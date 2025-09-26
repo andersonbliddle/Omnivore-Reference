@@ -10,6 +10,7 @@ class DrawingReferenceApp {
         this.allTags = new Set(); // Global tag bank
         this.selectedTags = new Set(); // Currently filtered tags (included)
         this.excludedTags = new Set(); // Currently excluded tags
+        this.textFilter = ''; // Current text filter
         this.practiceSets = {}; // Practice sets storage: {name: {collections: [ids], createdAt: timestamp}}
         this.currentPracticeSet = null; // Currently selected practice set name
         
@@ -78,6 +79,10 @@ class DrawingReferenceApp {
         this.tagFilters = document.getElementById('tag-filters');
         this.clearFiltersBtn = document.getElementById('clear-filters');
         this.currentContextCollectionId = null;
+
+        // Text filter elements
+        this.textFilterInput = document.getElementById('text-filter-input');
+        this.clearTextFilterBtn = document.getElementById('clear-text-filter');
 
         // Mass tag management elements
         this.addTagToSelectedBtn = document.getElementById('add-tag-to-selected');
@@ -149,7 +154,16 @@ class DrawingReferenceApp {
         // Tag management events
         this.addTagBtn.addEventListener('click', async () => await this.addNewTag());
         this.closeTagMenuBtn.addEventListener('click', () => this.hideTagContextMenu());
-        this.clearFiltersBtn.addEventListener('click', () => this.clearTagFilters());
+        this.clearFiltersBtn.addEventListener('click', () => this.clearAllFilters());
+
+        // Text filter events
+        this.textFilterInput.addEventListener('input', (e) => this.updateTextFilter(e.target.value));
+        this.textFilterInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.clearTextFilter();
+            }
+        });
+        this.clearTextFilterBtn.addEventListener('click', () => this.clearTextFilter());
         // Create a reusable handler for the tag input
         this.tagInputHandler = async (e) => {
             if (e.key === 'Enter') {
@@ -664,22 +678,8 @@ class DrawingReferenceApp {
             return;
         }
 
-        // Filter collections by selected and excluded tags
-        let filteredCollections = this.collections;
-
-        // Apply inclusion filter (all selected tags must be present)
-        if (this.selectedTags.size > 0) {
-            filteredCollections = filteredCollections.filter(collection =>
-                [...this.selectedTags].every(tag => collection.tags.includes(tag))
-            );
-        }
-
-        // Apply exclusion filter (excluded tags must not be present)
-        if (this.excludedTags.size > 0) {
-            filteredCollections = filteredCollections.filter(collection =>
-                ![...this.excludedTags].some(tag => collection.tags.includes(tag))
-            );
-        }
+        // Filter collections using the shared filtering logic
+        const filteredCollections = this.getFilteredCollections();
 
         this.collectionsListEl.innerHTML = filteredCollections.map(collection => {
             const firstPreview = collection.previews && collection.previews.length > 0 ? collection.previews[0] : null;
@@ -1293,6 +1293,14 @@ class DrawingReferenceApp {
         // Return currently filtered collections (same logic as in renderCollections)
         let filteredCollections = this.collections;
 
+        // Apply text filter first
+        if (this.textFilter && this.textFilter.trim().length > 0) {
+            const filterText = this.textFilter.toLowerCase();
+            filteredCollections = filteredCollections.filter(collection =>
+                collection.name.toLowerCase().includes(filterText)
+            );
+        }
+
         // Apply inclusion filter (all selected tags must be present)
         if (this.selectedTags.size > 0) {
             filteredCollections = filteredCollections.filter(collection =>
@@ -1637,6 +1645,9 @@ class DrawingReferenceApp {
         }).join('');
 
         clearBtn.style.display = 'block'; // Always visible
+
+        // Update text filter UI as well
+        this.updateTextFilterUI();
     }
 
     toggleTagFilter(tag) {
@@ -1667,6 +1678,35 @@ class DrawingReferenceApp {
         this.selectedTags.clear();
         this.excludedTags.clear();
         this.renderCollections();
+    }
+
+    clearAllFilters() {
+        this.selectedTags.clear();
+        this.excludedTags.clear();
+        this.clearTextFilter();
+        this.renderCollections();
+    }
+
+    updateTextFilter(value) {
+        this.textFilter = value.trim();
+        this.updateTextFilterUI();
+        this.renderCollections();
+    }
+
+    clearTextFilter() {
+        this.textFilter = '';
+        this.textFilterInput.value = '';
+        this.updateTextFilterUI();
+        this.renderCollections();
+    }
+
+    updateTextFilterUI() {
+        const hasTextFilter = this.textFilter.length > 0;
+        this.clearTextFilterBtn.style.display = hasTextFilter ? 'block' : 'none';
+
+        // Update clear filters button text to reflect all filter types
+        const hasAnyFilter = hasTextFilter || this.selectedTags.size > 0 || this.excludedTags.size > 0;
+        this.clearFiltersBtn.textContent = hasAnyFilter ? 'Clear All Filters' : 'Clear Filters';
     }
 
     async clearCache() {

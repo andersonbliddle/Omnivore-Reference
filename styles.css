@@ -313,6 +313,55 @@ input, textarea, select {
     background: #777;
 }
 
+/* Text Filter Styles */
+.text-filter-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 10px;
+}
+
+.text-filter-container input {
+    padding: 4px 25px 4px 8px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: #333;
+    color: #fff;
+    font-size: 0.85rem;
+    width: 200px;
+    transition: border-color 0.2s ease;
+}
+
+.text-filter-container input:focus {
+    outline: none;
+    border-color: #4a9eff;
+}
+
+.text-filter-container input::placeholder {
+    color: #888;
+}
+
+.clear-text-filter-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    border-radius: 2px;
+    transition: all 0.2s ease;
+}
+
+.clear-text-filter-btn:hover {
+    background: #555;
+    color: #fff;
+}
+
 /* Practice Sets Styles */
 .practice-sets {
     min-width: 300px;
