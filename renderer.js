@@ -103,25 +103,25 @@ class DrawingReferenceApp {
         // Mass tag management events
         this.addTagToSelectedBtn.addEventListener('click', () => this.showMassAddTagDialog());
         this.removeTagFromSelectedBtn.addEventListener('click', () => this.showMassRemoveTagDialog());
-        this.createAndAddTagBtn.addEventListener('click', () => this.createAndAddTag());
+        this.createAndAddTagBtn.addEventListener('click', async () => await this.createAndAddTag());
         this.cancelMassAddBtn.addEventListener('click', () => this.hideMassAddTagDialog());
         this.cancelMassRemoveBtn.addEventListener('click', () => this.hideMassRemoveTagDialog());
         // Create a reusable handler for the mass add tag input
-        this.massTagInputHandler = (e) => {
+        this.massTagInputHandler = async (e) => {
             if (e.key === 'Enter') {
-                this.createAndAddTag();
+                await this.createAndAddTag();
             }
         };
         this.ensureMassTagInputEventListener();
 
         // Tag management events
-        this.addTagBtn.addEventListener('click', () => this.addNewTag());
+        this.addTagBtn.addEventListener('click', async () => await this.addNewTag());
         this.closeTagMenuBtn.addEventListener('click', () => this.hideTagContextMenu());
         this.clearFiltersBtn.addEventListener('click', () => this.clearTagFilters());
         // Create a reusable handler for the tag input
-        this.tagInputHandler = (e) => {
+        this.tagInputHandler = async (e) => {
             if (e.key === 'Enter') {
-                this.addNewTag();
+                await this.addNewTag();
             }
         };
         this.newTagInput.addEventListener('keypress', this.tagInputHandler);
@@ -244,8 +244,8 @@ class DrawingReferenceApp {
                 this.addCollection();
             });
 
-            window.electronAPI.onMenuEvent('menu-show-message', (message) => {
-                alert(message);
+            window.electronAPI.onMenuEvent('menu-show-message', async (message) => {
+                await this.showAlert(message);
             });
 
             window.electronAPI.onMenuEvent('menu-show-backup-dialog', () => {
@@ -393,7 +393,7 @@ class DrawingReferenceApp {
 
         } catch (error) {
             console.error('Error adding collection(s):', error);
-            alert('Error adding collection(s). Please try again.');
+            await this.showAlert('Error adding collection(s). Please try again.');
         }
     }
 
@@ -401,7 +401,7 @@ class DrawingReferenceApp {
         const result = await window.electronAPI.getImagesFromDirectory(directoryPath);
 
         if (result.images.length === 0) {
-            alert(`No images found in "${directoryPath.split(/[\\/]/).pop()}".`);
+            await this.showAlert(`No images found in "${directoryPath.split(/[\\/]/).pop()}".`);
             return;
         }
 
@@ -475,7 +475,7 @@ class DrawingReferenceApp {
         if (skipped > 0) {
             message += `\n${skipped} director${skipped === 1 ? 'y' : 'ies'} skipped (no images found or error).`;
         }
-        alert(message);
+        await this.showAlert(message);
     }
 
     showProgressIndicator(message) {
@@ -541,7 +541,7 @@ class DrawingReferenceApp {
         this.removeTagFromSelectedBtn.style.display = hasEnabled ? 'block' : 'none';
     }
 
-    deleteSelectedCollections() {
+    async deleteSelectedCollections() {
         const enabledCollections = this.collections.filter(c => c.enabled);
 
         if (enabledCollections.length === 0) return;
@@ -553,14 +553,14 @@ class DrawingReferenceApp {
             ? `Delete the collection "${collectionNames[0]}"?`
             : `Delete ${enabledCollections.length} collections?\n\n• ${collectionNames.join('\n• ')}`;
 
-        if (!confirm(firstConfirmMessage)) return;
+        if (!(await this.showConfirm(firstConfirmMessage))) return;
 
         // Second confirmation for safety
         const secondConfirmMessage = enabledCollections.length === 1
             ? `Are you sure you want to permanently delete "${collectionNames[0]}"?\n\nThis action cannot be undone.`
             : `Are you sure you want to permanently delete these ${enabledCollections.length} collections?\n\nThis action cannot be undone.`;
 
-        if (confirm(secondConfirmMessage)) {
+        if (await this.showConfirm(secondConfirmMessage)) {
             this.collections = this.collections.filter(c => !c.enabled);
             this.renderCollections();
             this.saveSettings();
@@ -753,11 +753,11 @@ class DrawingReferenceApp {
         return shuffled;
     }
 
-    startSession() {
+    async startSession() {
         const availableImages = this.getEnabledImages();
         
         if (availableImages.length === 0) {
-            alert('Please add and enable at least one image collection.');
+            await this.showAlert('Please add and enable at least one image collection.');
             return;
         }
 
@@ -1278,6 +1278,9 @@ class DrawingReferenceApp {
         event.preventDefault();
         event.stopPropagation();
 
+        // Clear any lingering focus states from popups
+        this.clearFocusState();
+
         this.currentContextCollectionId = collectionId;
         const collection = this.collections.find(c => c.id === collectionId);
 
@@ -1288,6 +1291,18 @@ class DrawingReferenceApp {
         menu.style.display = 'block';
         menu.style.left = Math.min(event.clientX, window.innerWidth - 320) + 'px';
         menu.style.top = Math.min(event.clientY, window.innerHeight - 300) + 'px';
+
+        // Ensure window and element are properly focusable after showing menu
+        setTimeout(() => {
+            window.focus();
+            // Make sure input elements in the tooltip are interactive
+            const newTagInput = document.getElementById('new-tag-input');
+            if (newTagInput) {
+                // Remove any focus-blocking attributes and ensure it's interactive
+                newTagInput.removeAttribute('disabled');
+                newTagInput.style.pointerEvents = 'auto';
+            }
+        }, 10);
 
         // Show all tags in a single pool with selected/unselected styling
         const allTagsArray = [...this.allTags].sort();
@@ -1439,7 +1454,7 @@ class DrawingReferenceApp {
         }
     }
 
-    addNewTag() {
+    async addNewTag() {
         // Always get fresh element reference - don't rely on stored references
         const newTagInput = document.getElementById('new-tag-input');
 
@@ -1453,12 +1468,12 @@ class DrawingReferenceApp {
 
         // Validate tag name
         if (tagName.length > 20) {
-            alert('Tag name must be 20 characters or less');
+            await this.showAlert('Tag name must be 20 characters or less');
             return;
         }
 
         if (!/^[a-zA-Z0-9\-_\s]+$/.test(tagName)) {
-            alert('Tag names can only contain letters, numbers, spaces, hyphens, and underscores');
+            await this.showAlert('Tag names can only contain letters, numbers, spaces, hyphens, and underscores');
             return;
         }
 
@@ -1558,15 +1573,18 @@ class DrawingReferenceApp {
             // Re-render collections to show placeholders
             this.renderCollections();
 
-            alert(`Cache cleared! Removed ${clearedCount} thumbnails from memory. Thumbnails will regenerate as needed.`);
+            await this.showAlert(`Cache cleared! Removed ${clearedCount} thumbnails from memory. Thumbnails will regenerate as needed.`);
         } catch (error) {
             console.error('Error clearing cache:', error);
-            alert('Error clearing cache. Check console for details.');
+            await this.showAlert('Error clearing cache. Check console for details.');
         }
     }
 
     // Mass Tag Management Methods
     showMassAddTagDialog() {
+        // Clear any lingering focus states from popups
+        this.clearFocusState();
+
         // Populate existing tags
         const existingTags = [...this.allTags].sort();
         this.massAddExistingTags.innerHTML = existingTags.length > 0 ?
@@ -1582,9 +1600,16 @@ class DrawingReferenceApp {
         }
         this.massTagAddDialog.style.display = 'flex';
 
-        // Ensure the mass add input has its event listener
+        // Ensure the mass add input has its event listener and is interactive
         setTimeout(() => {
             this.ensureMassTagInputEventListener();
+            // Ensure input is properly interactive after popup-related focus issues
+            const massAddInput = document.getElementById('mass-add-tag-input');
+            if (massAddInput) {
+                massAddInput.removeAttribute('disabled');
+                massAddInput.style.pointerEvents = 'auto';
+            }
+            window.focus();
         }, 100);
     }
 
@@ -1595,6 +1620,9 @@ class DrawingReferenceApp {
     }
 
     showMassRemoveTagDialog() {
+        // Clear any lingering focus states from popups
+        this.clearFocusState();
+
         const selectedCollections = this.collections.filter(c => c.enabled);
 
         // Get all tags present in selected collections
@@ -1619,7 +1647,7 @@ class DrawingReferenceApp {
         this.reinitializeTagElements();
     }
 
-    createAndAddTag() {
+    async createAndAddTag() {
         // Always get fresh element reference
         const massAddTagInput = document.getElementById('mass-add-tag-input');
         if (!massAddTagInput) {
@@ -1632,19 +1660,19 @@ class DrawingReferenceApp {
 
         // Validate tag name
         if (tagName.length > 20) {
-            alert('Tag name must be 20 characters or less');
+            await this.showAlert('Tag name must be 20 characters or less');
             return;
         }
 
         if (!/^[a-zA-Z0-9\-_\s]+$/.test(tagName)) {
-            alert('Tag names can only contain letters, numbers, spaces, hyphens, and underscores');
+            await this.showAlert('Tag names can only contain letters, numbers, spaces, hyphens, and underscores');
             return;
         }
 
-        this.addTagToSelected(tagName);
+        await this.addTagToSelected(tagName);
     }
 
-    addTagToSelected(tagName) {
+    async addTagToSelected(tagName) {
         const selectedCollections = this.collections.filter(c => c.enabled);
 
         if (selectedCollections.length === 0) {
@@ -1690,9 +1718,9 @@ class DrawingReferenceApp {
             const message = addedCount === selectedCollections.length ?
                 `Added "${tagName}" to all ${selectedCollections.length} selected collection(s).` :
                 `Added "${tagName}" to ${addedCount} of ${selectedCollections.length} selected collection(s). ${selectedCollections.length - addedCount} already had this tag.`;
-            alert(message);
+            await this.showAlert(message);
         } else {
-            alert(`All selected collections already have the tag "${tagName}".`);
+            await this.showAlert(`All selected collections already have the tag "${tagName}".`);
         }
 
         // Force complete cleanup and reset after mass operations
@@ -1701,7 +1729,7 @@ class DrawingReferenceApp {
         }, 100);
     }
 
-    removeTagFromSelected(tagName) {
+    async removeTagFromSelected(tagName) {
         const selectedCollections = this.collections.filter(c => c.enabled);
 
         if (selectedCollections.length === 0) {
@@ -1742,9 +1770,9 @@ class DrawingReferenceApp {
         }
 
         if (removedCount > 0) {
-            alert(`Removed "${tagName}" from ${removedCount} collection(s).`);
+            await this.showAlert(`Removed "${tagName}" from ${removedCount} collection(s).`);
         } else {
-            alert(`None of the selected collections had the tag "${tagName}".`);
+            await this.showAlert(`None of the selected collections had the tag "${tagName}".`);
         }
 
         // Force complete cleanup and reset after mass operations
@@ -1810,13 +1838,111 @@ class DrawingReferenceApp {
         }, 50);
     }
 
+    // Custom Modal System
+    createModal(type, message, title = null) {
+        return new Promise((resolve) => {
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.className = 'custom-modal';
+
+            // Create modal content
+            const content = document.createElement('div');
+            content.className = 'custom-modal-content';
+
+            // Add title if provided
+            let titleHtml = '';
+            if (title) {
+                titleHtml = `<div class="custom-modal-header">${title}</div>`;
+            }
+
+            // Create message
+            const messageHtml = `<div class="custom-modal-message">${message}</div>`;
+
+            // Create buttons based on type
+            let buttonsHtml = '';
+            if (type === 'alert') {
+                buttonsHtml = `
+                    <div class="custom-modal-buttons">
+                        <button class="custom-modal-btn primary" onclick="this.closest('.custom-modal').resolve(true)">OK</button>
+                    </div>
+                `;
+            } else if (type === 'confirm') {
+                buttonsHtml = `
+                    <div class="custom-modal-buttons">
+                        <button class="custom-modal-btn secondary" onclick="this.closest('.custom-modal').resolve(false)">Cancel</button>
+                        <button class="custom-modal-btn primary" onclick="this.closest('.custom-modal').resolve(true)">OK</button>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = titleHtml + messageHtml + buttonsHtml;
+            modal.appendChild(content);
+
+            // Add resolve function to modal for button clicks
+            modal.resolve = (result) => {
+                document.body.removeChild(modal);
+                resolve(result);
+            };
+
+            // Handle click outside to close (for alerts only)
+            if (type === 'alert') {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.resolve(true);
+                    }
+                });
+            }
+
+            // Handle escape key
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    document.removeEventListener('keydown', handleEscape);
+                    modal.resolve(type === 'confirm' ? false : true);
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
+
+            // Add to DOM
+            document.body.appendChild(modal);
+
+            // Focus the primary button for keyboard navigation
+            setTimeout(() => {
+                const primaryBtn = modal.querySelector('.custom-modal-btn.primary');
+                if (primaryBtn) {
+                    primaryBtn.focus();
+                }
+            }, 50);
+        });
+    }
+
+    // Custom alert that returns a promise
+    async showAlert(message, title = null) {
+        return await this.createModal('alert', message, title);
+    }
+
+    // Custom confirm that returns a promise
+    async showConfirm(message, title = null) {
+        return await this.createModal('confirm', message, title);
+    }
+
+    clearFocusState() {
+        // Keep this method for the tag tooltip fix, but simplify it
+        // since we no longer need the complex focus restoration
+        if (document.activeElement && document.activeElement !== document.body) {
+            document.activeElement.blur();
+        }
+        setTimeout(() => {
+            window.focus();
+        }, 1);
+    }
+
     // Backup management methods
     async showBackupDialog() {
         try {
             const backups = await window.electronAPI.getBackupList();
 
             if (backups.length === 0) {
-                alert('No backups available.');
+                await this.showAlert('No backups available.');
                 return;
             }
 
@@ -1856,7 +1982,7 @@ class DrawingReferenceApp {
 
         } catch (error) {
             console.error('Error showing backup dialog:', error);
-            alert('Error loading backup list.');
+            await this.showAlert('Error loading backup list.');
         }
     }
 
@@ -1872,7 +1998,7 @@ Are you absolutely sure you want to restore from this backup?
 
 Current settings will be permanently lost!`;
 
-        if (!confirm(warningMessage)) {
+        if (!(await this.showConfirm(warningMessage))) {
             return;
         }
 
@@ -1892,11 +2018,11 @@ Current settings will be permanently lost!`;
             this.renderCollections();
 
             this.closeBackupDialog();
-            alert('Settings restored successfully from backup.\n\nYour previous settings have been replaced.');
+            await this.showAlert('Settings restored successfully from backup.\n\nYour previous settings have been replaced.');
 
         } catch (error) {
             console.error('Error restoring backup:', error);
-            alert('Error restoring from backup. Please try again.');
+            await this.showAlert('Error restoring from backup. Please try again.');
         }
     }
 
@@ -1913,7 +2039,7 @@ Current settings will be permanently lost!`;
             const backups = await window.electronAPI.getBackupList();
 
             if (backups.length === 0) {
-                alert('No backups available to delete.');
+                await this.showAlert('No backups available to delete.');
                 return;
             }
 
@@ -1966,7 +2092,7 @@ Current settings will be permanently lost!`;
 
         } catch (error) {
             console.error('Error showing delete backup dialog:', error);
-            alert('Error loading backup list.');
+            await this.showAlert('Error loading backup list.');
         }
     }
 
@@ -1977,13 +2103,13 @@ ${backupFilename}
 
 This action cannot be undone.`;
 
-        if (!confirm(warningMessage)) {
+        if (!(await this.showConfirm(warningMessage))) {
             return;
         }
 
         try {
             await window.electronAPI.deleteBackup(backupFilename);
-            alert('Backup deleted successfully.');
+            await this.showAlert('Backup deleted successfully.');
 
             // Close and reopen the dialog to refresh the list
             this.closeDeleteBackupDialog();
@@ -1991,7 +2117,7 @@ This action cannot be undone.`;
 
         } catch (error) {
             console.error('Error deleting backup:', error);
-            alert('Error deleting backup. Please try again.');
+            await this.showAlert('Error deleting backup. Please try again.');
         }
     }
 
@@ -2003,19 +2129,19 @@ This action cannot be undone.
 
 Are you absolutely sure?`;
 
-        if (!confirm(warningMessage)) {
+        if (!(await this.showConfirm(warningMessage))) {
             return;
         }
 
         try {
             const deletedCount = await window.electronAPI.deleteAllBackups();
-            alert(`Successfully deleted ${deletedCount} backup(s).`);
+            await this.showAlert(`Successfully deleted ${deletedCount} backup(s).`);
 
             this.closeDeleteBackupDialog();
 
         } catch (error) {
             console.error('Error deleting all backups:', error);
-            alert('Error deleting backups. Please try again.');
+            await this.showAlert('Error deleting backups. Please try again.');
         }
     }
 
