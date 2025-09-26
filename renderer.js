@@ -10,6 +10,8 @@ class DrawingReferenceApp {
         this.allTags = new Set(); // Global tag bank
         this.selectedTags = new Set(); // Currently filtered tags (included)
         this.excludedTags = new Set(); // Currently excluded tags
+        this.practiceSets = {}; // Practice sets storage: {name: {collections: [ids], createdAt: timestamp}}
+        this.currentPracticeSet = null; // Currently selected practice set name
         
         // Zoom and pan state (persistent during session)
         this.zoom = 1;
@@ -91,6 +93,30 @@ class DrawingReferenceApp {
 
         // Icon size controls
         this.iconSizeButtons = document.querySelectorAll('.icon-size-btn');
+
+        // Practice sets elements
+        this.practiceSetsDropdown = document.getElementById('practice-sets-dropdown');
+        this.savePracticeSetBtn = document.getElementById('save-practice-set');
+        this.updatePracticeSetBtn = document.getElementById('update-practice-set');
+        this.deletePracticeSetBtn = document.getElementById('delete-practice-set');
+        this.savePracticeSetDialog = document.getElementById('save-practice-set-dialog');
+        this.practiceSetNameInput = document.getElementById('practice-set-name-input');
+        this.confirmSavePracticeSetBtn = document.getElementById('confirm-save-practice-set');
+        this.cancelSavePracticeSetBtn = document.getElementById('cancel-save-practice-set');
+        this.practiceSetSelectedCount = document.getElementById('practice-set-selected-count');
+
+        // Debug: Check if practice set elements were found
+        console.log('Practice sets elements initialization:', {
+            dropdown: !!this.practiceSetsDropdown,
+            saveBtn: !!this.savePracticeSetBtn,
+            updateBtn: !!this.updatePracticeSetBtn,
+            deleteBtn: !!this.deletePracticeSetBtn,
+            dialog: !!this.savePracticeSetDialog,
+            nameInput: !!this.practiceSetNameInput,
+            confirmBtn: !!this.confirmSavePracticeSetBtn,
+            cancelBtn: !!this.cancelSavePracticeSetBtn,
+            selectedCount: !!this.practiceSetSelectedCount
+        });
     }
 
     bindEvents() {
@@ -156,6 +182,41 @@ class DrawingReferenceApp {
         // Icon size controls
         this.iconSizeButtons.forEach(btn => {
             btn.addEventListener('click', () => this.setIconSize(btn.getAttribute('data-size')));
+        });
+
+        // Practice sets events
+        if (this.practiceSetsDropdown) {
+            this.practiceSetsDropdown.addEventListener('change', (e) => {
+                console.log('Practice sets dropdown changed to:', e.target.value);
+                this.loadPracticeSet(e.target.value);
+            });
+
+            // Add debug event listeners to detect interaction issues
+            this.practiceSetsDropdown.addEventListener('mousedown', (e) => {
+                console.log('Practice sets dropdown mousedown event');
+            });
+
+            this.practiceSetsDropdown.addEventListener('click', (e) => {
+                console.log('Practice sets dropdown click event');
+            });
+
+            this.practiceSetsDropdown.addEventListener('focus', (e) => {
+                console.log('Practice sets dropdown focus event');
+            });
+
+            console.log('Practice sets dropdown event listeners added');
+        } else {
+            console.error('Practice sets dropdown element not found during event binding!');
+        }
+        this.savePracticeSetBtn.addEventListener('click', () => this.showSavePracticeSetDialog());
+        this.updatePracticeSetBtn.addEventListener('click', () => this.updateCurrentPracticeSet());
+        this.deletePracticeSetBtn.addEventListener('click', () => this.deleteCurrentPracticeSet());
+        this.confirmSavePracticeSetBtn.addEventListener('click', () => this.savePracticeSet());
+        this.cancelSavePracticeSetBtn.addEventListener('click', () => this.hideSavePracticeSetDialog());
+        this.practiceSetNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.savePracticeSet();
+            }
         });
 
         // Drag selection events (from anywhere in the app)
@@ -356,6 +417,11 @@ class DrawingReferenceApp {
                     }
                 });
                 this.rebuildTagBank();
+
+                // Restore practice sets
+                this.practiceSets = this.settings.practiceSets || {};
+                this.renderPracticeSetsDropdown();
+
                 this.renderCollections();
             }
         } catch (error) {
@@ -371,9 +437,10 @@ class DrawingReferenceApp {
                     collections: this.collections,
                     timerDuration: parseInt(this.timerDurationInput.value),
                     sessionLength: parseInt(this.sessionLengthInput.value),
-                    iconSize: this.iconSize
+                    iconSize: this.iconSize,
+                    practiceSets: this.practiceSets
                 };
-                
+
                 await window.electronAPI.saveSettings(this.settings);
             }
         } catch (error) {
@@ -545,6 +612,9 @@ class DrawingReferenceApp {
         // Show/hide mass tag buttons
         this.addTagToSelectedBtn.style.display = hasEnabled ? 'block' : 'none';
         this.removeTagFromSelectedBtn.style.display = hasEnabled ? 'block' : 'none';
+
+        // Update practice set buttons
+        this.updatePracticeSetButtons();
     }
 
     async deleteSelectedCollections() {
@@ -1062,7 +1132,10 @@ class DrawingReferenceApp {
         // Only prevent drag selection for very specific interactive elements
         if (this.isReorderMode || this.currentSession ||
             e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' ||
-            e.target.tagName === 'TEXTAREA' ||
+            e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' ||
+            e.target.tagName === 'OPTION' ||
+            e.target.closest('.practice-sets-controls') ||
+            e.target.closest('.timer-controls') ||
             e.target.closest('.tag-context-menu') ||
             e.target.closest('.mass-tag-dialog') ||
             e.target.closest('.custom-modal')) {
@@ -2190,6 +2263,193 @@ Are you absolutely sure?`;
             document.body.removeChild(this.currentDeleteBackupDialog);
             this.currentDeleteBackupDialog = null;
         }
+    }
+
+    // Practice Sets Management
+    renderPracticeSetsDropdown() {
+        // Check if dropdown element exists
+        if (!this.practiceSetsDropdown) {
+            console.error('Practice sets dropdown element not found!');
+            return;
+        }
+
+        // Clear existing options except the first one
+        this.practiceSetsDropdown.innerHTML = '<option value="">Select Practice Set...</option>';
+
+        // Add practice sets to dropdown
+        const sortedSets = Object.keys(this.practiceSets).sort();
+        console.log('Rendering practice sets dropdown with sets:', sortedSets);
+
+        sortedSets.forEach(setName => {
+            const option = document.createElement('option');
+            option.value = setName;
+            option.textContent = setName;
+            this.practiceSetsDropdown.appendChild(option);
+        });
+
+        // Update button states
+        this.updatePracticeSetButtons();
+    }
+
+    updatePracticeSetButtons() {
+        // Safely check if elements exist before accessing them
+        if (!this.savePracticeSetBtn || !this.updatePracticeSetBtn || !this.deletePracticeSetBtn) {
+            console.warn('Practice set buttons not found during updatePracticeSetButtons');
+            return;
+        }
+
+        const hasSelection = this.getSelectedCollections().length > 0;
+        const hasPracticeSet = this.currentPracticeSet && this.practiceSets[this.currentPracticeSet];
+
+        this.savePracticeSetBtn.disabled = !hasSelection;
+        this.updatePracticeSetBtn.disabled = !hasPracticeSet || !hasSelection;
+        this.deletePracticeSetBtn.disabled = !hasPracticeSet;
+    }
+
+    getSelectedCollections() {
+        return this.collections.filter(c => c.enabled);
+    }
+
+    showSavePracticeSetDialog() {
+        const selectedCollections = this.getSelectedCollections();
+        if (selectedCollections.length === 0) {
+            this.showAlert('Please select at least one collection to save as a practice set.');
+            return;
+        }
+
+        this.practiceSetSelectedCount.textContent = `${selectedCollections.length} collection(s) selected`;
+        this.practiceSetNameInput.value = '';
+        this.savePracticeSetDialog.style.display = 'flex';
+
+        setTimeout(() => {
+            this.practiceSetNameInput.focus();
+        }, 100);
+    }
+
+    hideSavePracticeSetDialog() {
+        this.savePracticeSetDialog.style.display = 'none';
+    }
+
+    async savePracticeSet() {
+        const name = this.practiceSetNameInput.value.trim();
+        if (!name) {
+            await this.showAlert('Please enter a name for the practice set.');
+            return;
+        }
+
+        if (name.length > 30) {
+            await this.showAlert('Practice set name must be 30 characters or less.');
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9\-_\s]+$/.test(name)) {
+            await this.showAlert('Practice set names can only contain letters, numbers, spaces, hyphens, and underscores.');
+            return;
+        }
+
+        const selectedCollections = this.getSelectedCollections();
+        if (selectedCollections.length === 0) {
+            await this.showAlert('Please select at least one collection.');
+            return;
+        }
+
+        // Check if name already exists
+        if (this.practiceSets[name]) {
+            const overwrite = await this.showConfirm(`A practice set named "${name}" already exists. Do you want to overwrite it?`);
+            if (!overwrite) return;
+        }
+
+        // Save practice set
+        this.practiceSets[name] = {
+            collections: selectedCollections.map(c => c.id),
+            createdAt: Date.now(),
+            collectionCount: selectedCollections.length
+        };
+
+        await this.saveSettings();
+        this.renderPracticeSetsDropdown();
+        this.hideSavePracticeSetDialog();
+
+        await this.showAlert(`Practice set "${name}" saved with ${selectedCollections.length} collection(s).`);
+    }
+
+    async loadPracticeSet(setName) {
+        console.log('loadPracticeSet called with:', setName);
+        console.log('Available practice sets:', Object.keys(this.practiceSets));
+
+        if (!setName || !this.practiceSets[setName]) {
+            this.currentPracticeSet = null;
+            this.updatePracticeSetButtons();
+            return;
+        }
+
+        this.currentPracticeSet = setName;
+        const practiceSet = this.practiceSets[setName];
+        console.log('Loading practice set:', setName, practiceSet);
+
+        // Deselect all collections first
+        this.collections.forEach(collection => {
+            collection.enabled = false;
+        });
+
+        // Select collections in the practice set
+        let foundCount = 0;
+        practiceSet.collections.forEach(collectionId => {
+            const collection = this.collections.find(c => c.id === collectionId);
+            if (collection) {
+                collection.enabled = true;
+                foundCount++;
+            }
+        });
+
+        // Update UI
+        this.renderCollections();
+        this.updatePracticeSetButtons();
+
+        // Show info if some collections were missing
+        if (foundCount < practiceSet.collections.length) {
+            const missingCount = practiceSet.collections.length - foundCount;
+            await this.showAlert(`Loaded practice set "${setName}".\n\n${foundCount} of ${practiceSet.collections.length} collections found.\n${missingCount} collection(s) no longer exist.`);
+        }
+    }
+
+    async updateCurrentPracticeSet() {
+        if (!this.currentPracticeSet) return;
+
+        const selectedCollections = this.getSelectedCollections();
+        if (selectedCollections.length === 0) {
+            await this.showAlert('Please select at least one collection to update the practice set.');
+            return;
+        }
+
+        const confirmed = await this.showConfirm(`Update practice set "${this.currentPracticeSet}" with current selection (${selectedCollections.length} collection(s))?`);
+        if (!confirmed) return;
+
+        // Update practice set
+        this.practiceSets[this.currentPracticeSet] = {
+            collections: selectedCollections.map(c => c.id),
+            createdAt: this.practiceSets[this.currentPracticeSet].createdAt, // Keep original creation time
+            updatedAt: Date.now(),
+            collectionCount: selectedCollections.length
+        };
+
+        await this.saveSettings();
+        await this.showAlert(`Practice set "${this.currentPracticeSet}" updated with ${selectedCollections.length} collection(s).`);
+    }
+
+    async deleteCurrentPracticeSet() {
+        if (!this.currentPracticeSet) return;
+
+        const confirmed = await this.showConfirm(`Delete practice set "${this.currentPracticeSet}"?\n\nThis action cannot be undone.`);
+        if (!confirmed) return;
+
+        delete this.practiceSets[this.currentPracticeSet];
+        this.currentPracticeSet = null;
+        this.practiceSetsDropdown.value = '';
+
+        await this.saveSettings();
+        this.renderPracticeSetsDropdown();
+        await this.showAlert('Practice set deleted successfully.');
     }
 }
 

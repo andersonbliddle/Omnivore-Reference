@@ -36,11 +36,12 @@ img {
 }
 
 /* Re-enable text selection for input fields */
-input, textarea {
+input, textarea, select {
     user-select: text;
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
+    pointer-events: auto !important;
 }
 
 .app-container {
@@ -310,6 +311,107 @@ input, textarea {
 
 .clear-filters-btn:hover {
     background: #777;
+}
+
+/* Practice Sets Styles */
+.practice-sets {
+    min-width: 300px;
+}
+
+.practice-sets-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    pointer-events: auto !important;
+}
+
+.practice-sets-controls * {
+    pointer-events: auto !important;
+}
+
+.practice-sets-dropdown {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    min-width: 150px;
+    max-width: 200px;
+    pointer-events: auto !important;
+    cursor: pointer;
+    position: relative;
+    z-index: 100;
+}
+
+.practice-sets-dropdown:focus {
+    outline: none;
+    border-color: #4a9eff;
+}
+
+.practice-set-btn {
+    background: #4a9eff;
+    color: white;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.practice-set-btn:hover:not(:disabled) {
+    background: #357abd;
+}
+
+.practice-set-btn:disabled {
+    background: #555;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.practice-set-btn.danger {
+    background: #dc3545;
+}
+
+.practice-set-btn.danger:hover:not(:disabled) {
+    background: #c82333;
+}
+
+/* Practice Set Dialog Styles */
+.practice-set-info {
+    padding: 10px;
+    background: rgba(74, 158, 255, 0.1);
+    border: 1px solid rgba(74, 158, 255, 0.3);
+    border-radius: 6px;
+    margin-bottom: 15px;
+    color: #4a9eff;
+    font-weight: 500;
+}
+
+.practice-set-input-section {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.practice-set-input-section input {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #333;
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.practice-set-input-section input:focus {
+    outline: none;
+    border-color: #4a9eff;
 }
 
 /* Collection Tags Display */

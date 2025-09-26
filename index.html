@@ -35,6 +35,18 @@
             </div>
 
             <div class="timer-controls">
+                <div class="control-group practice-sets">
+                    <label>Practice Sets:</label>
+                    <div class="practice-sets-controls">
+                        <select id="practice-sets-dropdown" class="practice-sets-dropdown">
+                            <option value="">Select Practice Set...</option>
+                        </select>
+                        <button id="save-practice-set" class="practice-set-btn">Save</button>
+                        <button id="update-practice-set" class="practice-set-btn" disabled>Update</button>
+                        <button id="delete-practice-set" class="practice-set-btn danger" disabled>Delete</button>
+                    </div>
+                </div>
+
                 <div class="control-group">
                     <label for="timer-duration">Timer (seconds):</label>
                     <div class="input-with-buttons">
@@ -184,6 +196,25 @@
                 </div>
                 <div class="dialog-actions">
                     <button id="cancel-mass-remove" class="dialog-btn secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Practice Set Dialog -->
+        <div id="save-practice-set-dialog" class="mass-tag-dialog" style="display: none;">
+            <div class="dialog-content">
+                <div class="dialog-header">Save Practice Set</div>
+                <div class="dialog-body">
+                    <div class="practice-set-info">
+                        <p id="practice-set-selected-count">0 collections selected</p>
+                    </div>
+                    <div class="practice-set-input-section">
+                        <input type="text" id="practice-set-name-input" placeholder="Enter practice set name..." maxlength="30">
+                        <button id="confirm-save-practice-set" class="dialog-btn primary">Save Practice Set</button>
+                    </div>
+                </div>
+                <div class="dialog-actions">
+                    <button id="cancel-save-practice-set" class="dialog-btn secondary">Cancel</button>
                 </div>
             </div>
         </div>
