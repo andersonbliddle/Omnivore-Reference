@@ -59,8 +59,10 @@ class DrawingReferenceApp {
         this.sessionCounterEl = document.getElementById('session-counter');
         this.deleteSelectedBtn = document.getElementById('delete-selected');
         this.reorderBtn = document.getElementById('reorder-collections');
-        this.selectAllBtn = document.getElementById('select-all');
-        this.deselectAllBtn = document.getElementById('deselect-all');
+        this.selectAllTrueBtn = document.getElementById('select-all-true');
+        this.deselectAllTrueBtn = document.getElementById('deselect-all-true');
+        this.selectFilteredBtn = document.getElementById('select-filtered');
+        this.deselectFilteredBtn = document.getElementById('deselect-filtered');
 
         // Tag-related elements
         this.tagContextMenu = document.getElementById('tag-context-menu');
@@ -97,8 +99,10 @@ class DrawingReferenceApp {
         this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
         this.deleteSelectedBtn.addEventListener('click', () => this.deleteSelectedCollections());
         this.reorderBtn.addEventListener('click', () => this.toggleReorderMode());
-        this.selectAllBtn.addEventListener('click', () => this.selectAllCollections());
-        this.deselectAllBtn.addEventListener('click', () => this.deselectAllCollections());
+        this.selectAllTrueBtn.addEventListener('click', () => this.selectAllCollectionsTrue());
+        this.deselectAllTrueBtn.addEventListener('click', () => this.deselectAllCollectionsTrue());
+        this.selectFilteredBtn.addEventListener('click', () => this.selectFilteredCollections());
+        this.deselectFilteredBtn.addEventListener('click', () => this.deselectFilteredCollections());
 
         // Mass tag management events
         this.addTagToSelectedBtn.addEventListener('click', () => this.showMassAddTagDialog());
@@ -1217,7 +1221,26 @@ class DrawingReferenceApp {
         return filteredCollections;
     }
 
-    selectAllCollections() {
+    selectAllCollectionsTrue() {
+        // Select ALL collections regardless of filtering
+        this.collections.forEach(collection => {
+            collection.enabled = true;
+        });
+        this.renderCollections();
+        this.saveSettings();
+    }
+
+    deselectAllCollectionsTrue() {
+        // Deselect ALL collections regardless of filtering
+        this.collections.forEach(collection => {
+            collection.enabled = false;
+        });
+        this.renderCollections();
+        this.saveSettings();
+    }
+
+    selectFilteredCollections() {
+        // Select only the currently filtered collections
         const filteredCollections = this.getFilteredCollections();
         filteredCollections.forEach(collection => {
             collection.enabled = true;
@@ -1226,7 +1249,8 @@ class DrawingReferenceApp {
         this.saveSettings();
     }
 
-    deselectAllCollections() {
+    deselectFilteredCollections() {
+        // Deselect only the currently filtered collections
         const filteredCollections = this.getFilteredCollections();
         filteredCollections.forEach(collection => {
             collection.enabled = false;

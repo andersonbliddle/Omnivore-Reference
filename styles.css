@@ -56,6 +56,17 @@ body {
 .selection-buttons {
     display: flex;
     gap: 8px;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.selection-group {
+    display: flex;
+    gap: 4px;
+    padding: 2px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
 }
 
 .timer-controls {
@@ -166,12 +177,13 @@ body {
 .selection-btn {
     background: #6c757d;
     color: white;
-    font-size: 0.85rem;
-    padding: 8px 12px;
+    font-size: 0.8rem;
+    padding: 6px 10px;
     border: none;
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .selection-btn:hover {
@@ -183,7 +195,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-width: 450px;
+    max-width: 650px;
     padding: 12px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
