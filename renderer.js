@@ -225,7 +225,17 @@ class DrawingReferenceApp {
         this.savePracticeSetBtn.addEventListener('click', () => this.showSavePracticeSetDialog());
         this.updatePracticeSetBtn.addEventListener('click', () => this.updateCurrentPracticeSet());
         this.deletePracticeSetBtn.addEventListener('click', () => this.deleteCurrentPracticeSet());
-        this.confirmSavePracticeSetBtn.addEventListener('click', () => this.savePracticeSet());
+
+        if (this.confirmSavePracticeSetBtn) {
+            this.confirmSavePracticeSetBtn.addEventListener('click', () => {
+                console.log('Confirm save button clicked');
+                this.savePracticeSet();
+            });
+            console.log('Confirm save practice set button event listener added');
+        } else {
+            console.error('confirmSavePracticeSetBtn element not found!');
+        }
+
         this.cancelSavePracticeSetBtn.addEventListener('click', () => this.hideSavePracticeSetDialog());
         this.practiceSetNameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -1867,13 +1877,12 @@ class DrawingReferenceApp {
             }, 50);
         }
 
+        // Show brief success feedback instead of modal popup
         if (addedCount > 0) {
-            const message = addedCount === selectedCollections.length ?
-                `Added "${tagName}" to all ${selectedCollections.length} selected collection(s).` :
-                `Added "${tagName}" to ${addedCount} of ${selectedCollections.length} selected collection(s). ${selectedCollections.length - addedCount} already had this tag.`;
-            await this.showAlert(message);
+            console.log(`Added "${tagName}" to ${addedCount} of ${selectedCollections.length} collection(s)`);
+            this.showBriefMessage(`Added "${tagName}" to ${addedCount} collection(s)`, 'success');
         } else {
-            await this.showAlert(`All selected collections already have the tag "${tagName}".`);
+            this.showBriefMessage(`All selected collections already have "${tagName}"`, 'info');
         }
 
         // Force complete cleanup and reset after mass operations
@@ -1922,10 +1931,12 @@ class DrawingReferenceApp {
             }, 50);
         }
 
+        // Show brief feedback instead of modal popup
         if (removedCount > 0) {
-            await this.showAlert(`Removed "${tagName}" from ${removedCount} collection(s).`);
+            console.log(`Removed "${tagName}" from ${removedCount} collection(s)`);
+            this.showBriefMessage(`Removed "${tagName}" from ${removedCount} collection(s)`, 'success');
         } else {
-            await this.showAlert(`None of the selected collections had the tag "${tagName}".`);
+            this.showBriefMessage(`No collections had "${tagName}"`, 'info');
         }
 
         // Force complete cleanup and reset after mass operations
@@ -2087,6 +2098,41 @@ class DrawingReferenceApp {
         setTimeout(() => {
             window.focus();
         }, 1);
+    }
+
+    // Brief message system for non-blocking feedback
+    showBriefMessage(message, type = 'info') {
+        // Remove any existing brief message
+        const existingMessage = document.getElementById('brief-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+
+        // Create brief message element
+        const messageEl = document.createElement('div');
+        messageEl.id = 'brief-message';
+        messageEl.className = `brief-message brief-message-${type}`;
+        messageEl.textContent = message;
+
+        // Add to document
+        document.body.appendChild(messageEl);
+
+        // Trigger animation
+        setTimeout(() => {
+            messageEl.classList.add('show');
+        }, 10);
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (messageEl.parentNode) {
+                messageEl.classList.remove('show');
+                setTimeout(() => {
+                    if (messageEl.parentNode) {
+                        messageEl.remove();
+                    }
+                }, 300);
+            }
+        }, 3000);
     }
 
     // Backup management methods
@@ -2353,7 +2399,7 @@ Are you absolutely sure?`;
     showSavePracticeSetDialog() {
         const selectedCollections = this.getSelectedCollections();
         if (selectedCollections.length === 0) {
-            this.showAlert('Please select at least one collection to save as a practice set.');
+            this.showBriefMessage('Please select at least one collection first', 'warning');
             return;
         }
 
@@ -2371,25 +2417,28 @@ Are you absolutely sure?`;
     }
 
     async savePracticeSet() {
+        console.log('savePracticeSet called');
         const name = this.practiceSetNameInput.value.trim();
+        console.log('Practice set name:', name);
+
         if (!name) {
-            await this.showAlert('Please enter a name for the practice set.');
+            this.showBriefMessage('Please enter a name for the practice set', 'warning');
             return;
         }
 
         if (name.length > 30) {
-            await this.showAlert('Practice set name must be 30 characters or less.');
+            this.showBriefMessage('Practice set name must be 30 characters or less', 'warning');
             return;
         }
 
         if (!/^[a-zA-Z0-9\-_\s]+$/.test(name)) {
-            await this.showAlert('Practice set names can only contain letters, numbers, spaces, hyphens, and underscores.');
+            this.showBriefMessage('Practice set names can only contain letters, numbers, spaces, hyphens, and underscores', 'warning');
             return;
         }
 
         const selectedCollections = this.getSelectedCollections();
         if (selectedCollections.length === 0) {
-            await this.showAlert('Please select at least one collection.');
+            this.showBriefMessage('Please select at least one collection', 'warning');
             return;
         }
 
@@ -2410,7 +2459,8 @@ Are you absolutely sure?`;
         this.renderPracticeSetsDropdown();
         this.hideSavePracticeSetDialog();
 
-        await this.showAlert(`Practice set "${name}" saved with ${selectedCollections.length} collection(s).`);
+        // Show brief success message instead of modal
+        this.showBriefMessage(`Saved "${name}" with ${selectedCollections.length} collection(s)`, 'success');
     }
 
     async loadPracticeSet(setName) {
@@ -2458,7 +2508,7 @@ Are you absolutely sure?`;
 
         const selectedCollections = this.getSelectedCollections();
         if (selectedCollections.length === 0) {
-            await this.showAlert('Please select at least one collection to update the practice set.');
+            this.showBriefMessage('Please select at least one collection to update the practice set', 'warning');
             return;
         }
 
@@ -2474,7 +2524,7 @@ Are you absolutely sure?`;
         };
 
         await this.saveSettings();
-        await this.showAlert(`Practice set "${this.currentPracticeSet}" updated with ${selectedCollections.length} collection(s).`);
+        this.showBriefMessage(`Updated "${this.currentPracticeSet}" with ${selectedCollections.length} collection(s)`, 'success');
     }
 
     async deleteCurrentPracticeSet() {
@@ -2489,7 +2539,7 @@ Are you absolutely sure?`;
 
         await this.saveSettings();
         this.renderPracticeSetsDropdown();
-        await this.showAlert('Practice set deleted successfully.');
+        this.showBriefMessage('Practice set deleted successfully', 'success');
     }
 }
 

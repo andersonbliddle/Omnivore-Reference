@@ -463,6 +463,50 @@ input, textarea, select {
     border-color: #4a9eff;
 }
 
+/* Brief Message System */
+.brief-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 6px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.brief-message.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.brief-message-success {
+    background: #28a745;
+    border-left: 4px solid #1e7e34;
+}
+
+.brief-message-info {
+    background: #17a2b8;
+    border-left: 4px solid #117a8b;
+}
+
+.brief-message-warning {
+    background: #ffc107;
+    color: #212529;
+    border-left: 4px solid #d39e00;
+}
+
+.brief-message-error {
+    background: #dc3545;
+    border-left: 4px solid #bd2130;
+}
+
 /* Collection Tags Display */
 .collection-tags {
     margin: 4px 0;
