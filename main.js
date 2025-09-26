@@ -8,6 +8,7 @@ let mainWindow;
 
 // Settings file path - save in app directory
 const settingsPath = path.join(__dirname, 'settings.json');
+const backupDir = path.join(__dirname, 'settings_backups');
 
 // Thumbnail cache directory
 const thumbnailCacheDir = path.join(__dirname, 'thumbnail_cache');
@@ -19,6 +20,40 @@ const defaultSettings = {
   sessionLength: 10,
   windowBounds: { width: 1200, height: 800 }
 };
+
+// Ensure backup directory exists
+async function ensureBackupDir() {
+  try {
+    await fs.access(backupDir);
+  } catch (error) {
+    await fs.mkdir(backupDir, { recursive: true });
+  }
+}
+
+// Create a backup of current settings
+async function createBackup() {
+  try {
+    await ensureBackupDir();
+
+    // Check if settings file exists
+    try {
+      await fs.access(settingsPath);
+    } catch (error) {
+      throw new Error('No settings file to backup');
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(backupDir, `settings_backup_${timestamp}.json`);
+
+    // Copy current settings to backup
+    await fs.copyFile(settingsPath, backupPath);
+    return backupPath;
+  } catch (error) {
+    console.error('Error creating backup:', error);
+    throw error;
+  }
+}
+
 
 // Load settings from file
 async function loadSettings() {
@@ -32,12 +67,91 @@ async function loadSettings() {
   }
 }
 
+
 // Save settings to file
 async function saveSettings(settings) {
   try {
     await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
   } catch (error) {
     console.error('Error saving settings:', error);
+    throw error; // Re-throw to let caller know save failed
+  }
+}
+
+// Get list of available backups
+async function getBackupList() {
+  try {
+    await ensureBackupDir();
+    const files = await fs.readdir(backupDir);
+    const backupFiles = files
+      .filter(file => file.startsWith('settings_backup_') && file.endsWith('.json'))
+      .map(file => {
+        const timestamp = file.substring(16, file.length - 5);
+        // Convert back to ISO string format: 2025-01-15T10-30-45-123Z -> 2025-01-15T10:30:45.123Z
+        const isoString = timestamp.replace(/^(\d{4}-\d{2}-\d{2}T\d{2})-(\d{2})-(\d{2})-(\d{3}Z)$/, '$1:$2:$3.$4');
+        const date = new Date(isoString);
+        return {
+          filename: file,
+          timestamp: timestamp,
+          date: date.toLocaleString(),
+          path: path.join(backupDir, file)
+        };
+      })
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    return backupFiles;
+  } catch (error) {
+    console.error('Error getting backup list:', error);
+    return [];
+  }
+}
+
+// Restore settings from a specific backup
+async function restoreFromBackup(backupFilename) {
+  try {
+    const backupPath = path.join(backupDir, backupFilename);
+
+    // Verify backup file exists and is valid
+    const data = await fs.readFile(backupPath, 'utf8');
+    const settings = JSON.parse(data);
+
+    // Restore the backup
+    await fs.copyFile(backupPath, settingsPath);
+
+    return { ...defaultSettings, ...settings };
+  } catch (error) {
+    console.error('Error restoring from backup:', error);
+    throw error;
+  }
+}
+
+// Delete a specific backup file
+async function deleteBackup(backupFilename) {
+  try {
+    const backupPath = path.join(backupDir, backupFilename);
+    await fs.unlink(backupPath);
+    return true;
+  } catch (error) {
+    console.error('Error deleting backup:', error);
+    throw error;
+  }
+}
+
+// Delete all backup files
+async function deleteAllBackups() {
+  try {
+    await ensureBackupDir();
+    const files = await fs.readdir(backupDir);
+    const backupFiles = files.filter(file => file.startsWith('settings_backup_') && file.endsWith('.json'));
+
+    for (const file of backupFiles) {
+      await fs.unlink(path.join(backupDir, file));
+    }
+
+    return backupFiles.length;
+  } catch (error) {
+    console.error('Error deleting all backups:', error);
+    throw error;
   }
 }
 
@@ -232,6 +346,39 @@ function createMenu() {
               console.error('Error cleaning thumbnails:', error);
             }
           }
+        },
+        { type: 'separator' },
+        {
+          label: 'Create Backup',
+          click: async () => {
+            try {
+              await createBackup();
+              if (mainWindow) {
+                mainWindow.webContents.send('menu-show-message', 'Settings backup created successfully.');
+              }
+            } catch (error) {
+              console.error('Error creating backup:', error);
+              if (mainWindow) {
+                mainWindow.webContents.send('menu-show-message', 'Error creating backup.');
+              }
+            }
+          }
+        },
+        {
+          label: 'Restore from Backup...',
+          click: async () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu-show-backup-dialog');
+            }
+          }
+        },
+        {
+          label: 'Delete Backups...',
+          click: async () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu-show-delete-backup-dialog');
+            }
+          }
         }
       ]
     }
@@ -371,9 +518,8 @@ ipcMain.handle('get-images-from-directory', async (event, directoryPath) => {
   try {
     const imageFiles = await scanDirectoryRecursively(directoryPath);
 
-    // Select just 1 image for preview (faster than 3)
-    const shuffled = [...imageFiles].sort(() => 0.5 - Math.random());
-    const previewCandidate = shuffled[0];
+    // Select first image for preview (consistent thumbnail)
+    const previewCandidate = imageFiles[0];
 
     // Generate thumbnail for preview image (non-blocking)
     const previewImages = [];
@@ -403,7 +549,7 @@ ipcMain.handle('get-images-from-directory', async (event, directoryPath) => {
 
       // Generate thumbnails for remaining images in background (non-blocking)
       setImmediate(async () => {
-        const remainingImages = shuffled.slice(1, 10); // Process up to 10 more images
+        const remainingImages = imageFiles.slice(1, 10); // Process up to 10 more images
         for (const img of remainingImages) {
           try {
             await getThumbnail(img.path);
@@ -436,6 +582,28 @@ ipcMain.handle('load-settings', async () => {
 
 ipcMain.handle('save-settings', async (event, settings) => {
   await saveSettings(settings);
+});
+
+// Backup management IPC handlers
+ipcMain.handle('get-backup-list', async () => {
+  return await getBackupList();
+});
+
+ipcMain.handle('restore-from-backup', async (event, backupFilename) => {
+  return await restoreFromBackup(backupFilename);
+});
+
+ipcMain.handle('create-manual-backup', async () => {
+  await createBackup();
+  return true;
+});
+
+ipcMain.handle('delete-backup', async (event, backupFilename) => {
+  return await deleteBackup(backupFilename);
+});
+
+ipcMain.handle('delete-all-backups', async () => {
+  return await deleteAllBackups();
 });
 
 // Fullscreen toggle handler

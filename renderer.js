@@ -247,6 +247,14 @@ class DrawingReferenceApp {
             window.electronAPI.onMenuEvent('menu-show-message', (message) => {
                 alert(message);
             });
+
+            window.electronAPI.onMenuEvent('menu-show-backup-dialog', () => {
+                this.showBackupDialog();
+            });
+
+            window.electronAPI.onMenuEvent('menu-show-delete-backup-dialog', () => {
+                this.showDeleteBackupDialog();
+            });
         }
     }
 
@@ -1687,9 +1695,9 @@ class DrawingReferenceApp {
             alert(`All selected collections already have the tag "${tagName}".`);
         }
 
-        // Reload the application to ensure clean state after mass operations
+        // Force complete cleanup and reset after mass operations
         setTimeout(() => {
-            location.reload();
+            this.forceCompleteReset();
         }, 100);
     }
 
@@ -1739,10 +1747,283 @@ class DrawingReferenceApp {
             alert(`None of the selected collections had the tag "${tagName}".`);
         }
 
-        // Reload the application to ensure clean state after mass operations
+        // Force complete cleanup and reset after mass operations
         setTimeout(() => {
-            location.reload();
+            this.forceCompleteReset();
         }, 100);
+    }
+
+    forceCompleteReset() {
+        // Clear any stuck focus states first
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
+
+        // Force close all dialogs and tooltips
+        this.massTagAddDialog.style.display = 'none';
+        this.massTagRemoveDialog.style.display = 'none';
+        this.tagContextMenu.style.display = 'none';
+
+        // Clear any modal or overlay backgrounds
+        const overlays = document.querySelectorAll('.mass-tag-dialog, .tag-context-menu');
+        overlays.forEach(overlay => {
+            overlay.style.display = 'none';
+            overlay.style.visibility = 'hidden';
+            overlay.style.pointerEvents = 'none';
+        });
+
+        // Reset tooltip state
+        this.currentContextCollectionId = null;
+
+        // Force focus to body to clear any stuck focus states
+        document.body.focus();
+
+        // Force DOM refresh with a small delay
+        setTimeout(() => {
+            // Re-initialize all elements to ensure clean state
+            this.initializeElements();
+            this.bindEvents();
+            this.renderCollections();
+
+            // Clear focus again after DOM changes
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+            document.body.focus();
+
+            // Ensure all dialogs are completely reset
+            setTimeout(() => {
+                this.massTagAddDialog.style.visibility = 'visible';
+                this.massTagRemoveDialog.style.visibility = 'visible';
+                this.tagContextMenu.style.visibility = 'visible';
+
+                overlays.forEach(overlay => {
+                    overlay.style.pointerEvents = 'auto';
+                });
+
+                // Final focus cleanup - simulate window focus event
+                setTimeout(() => {
+                    window.focus();
+                    document.body.focus();
+                }, 10);
+            }, 50);
+        }, 50);
+    }
+
+    // Backup management methods
+    async showBackupDialog() {
+        try {
+            const backups = await window.electronAPI.getBackupList();
+
+            if (backups.length === 0) {
+                alert('No backups available.');
+                return;
+            }
+
+            let dialogHTML = '<h3>Available Backups</h3><ul style="list-style: none; padding: 0; max-height: 300px; overflow-y: auto;">';
+
+            backups.forEach((backup, index) => {
+                dialogHTML += `
+                    <li style="padding: 8px; border: 1px solid #444; margin: 4px 0; cursor: pointer; background: #333;"
+                        onclick="window.app.restoreBackup('${backup.filename}')">
+                        <strong>${backup.date}</strong><br>
+                        <small style="color: #888;">${backup.filename}</small>
+                    </li>
+                `;
+            });
+
+            dialogHTML += '</ul><p style="color: #888; font-size: 0.9em;">Click on a backup to restore it. <strong>Warning:</strong> This will replace your current settings permanently!</p>';
+
+            // Create a custom dialog
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7); z-index: 10000; display: flex;
+                align-items: center; justify-content: center;
+            `;
+
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: #2a2a2a; padding: 20px; border-radius: 8px;
+                max-width: 500px; width: 90%; color: white; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            `;
+            content.innerHTML = dialogHTML + '<br><button onclick="window.app.closeBackupDialog()" style="background: #666; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Cancel</button>';
+
+            dialog.appendChild(content);
+            document.body.appendChild(dialog);
+
+            this.currentBackupDialog = dialog;
+
+        } catch (error) {
+            console.error('Error showing backup dialog:', error);
+            alert('Error loading backup list.');
+        }
+    }
+
+    async restoreBackup(backupFilename) {
+        const warningMessage = `⚠️ WARNING: This will completely replace your current settings!
+
+This action will:
+• Delete all your current collections and tags
+• Replace all timer and session settings
+• Cannot be undone
+
+Are you absolutely sure you want to restore from this backup?
+
+Current settings will be permanently lost!`;
+
+        if (!confirm(warningMessage)) {
+            return;
+        }
+
+        try {
+            const restoredSettings = await window.electronAPI.restoreFromBackup(backupFilename);
+
+            // Reload the app with restored settings
+            this.settings = restoredSettings;
+            this.collections = restoredSettings.collections || [];
+            this.timerDurationInput.value = restoredSettings.timerDuration || 60;
+            this.sessionLengthInput.value = restoredSettings.sessionLength || 10;
+            this.iconSize = restoredSettings.iconSize || 'small';
+
+            // Update UI
+            this.updateIconSizeButtons();
+            this.rebuildTagBank();
+            this.renderCollections();
+
+            this.closeBackupDialog();
+            alert('Settings restored successfully from backup.\n\nYour previous settings have been replaced.');
+
+        } catch (error) {
+            console.error('Error restoring backup:', error);
+            alert('Error restoring from backup. Please try again.');
+        }
+    }
+
+    closeBackupDialog() {
+        if (this.currentBackupDialog) {
+            document.body.removeChild(this.currentBackupDialog);
+            this.currentBackupDialog = null;
+        }
+    }
+
+    // Delete backup management methods
+    async showDeleteBackupDialog() {
+        try {
+            const backups = await window.electronAPI.getBackupList();
+
+            if (backups.length === 0) {
+                alert('No backups available to delete.');
+                return;
+            }
+
+            let dialogHTML = '<h3>Delete Backups</h3>';
+
+            // Add "Delete All" button at the top
+            dialogHTML += '<div style="margin-bottom: 15px;">';
+            dialogHTML += '<button onclick="window.app.deleteAllBackups()" style="background: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ Delete All Backups</button>';
+            dialogHTML += '</div>';
+
+            dialogHTML += '<p style="color: #888; font-size: 0.9em; margin-bottom: 15px;">Click on individual backups to delete them:</p>';
+            dialogHTML += '<ul style="list-style: none; padding: 0; max-height: 300px; overflow-y: auto;">';
+
+            backups.forEach((backup, index) => {
+                dialogHTML += `
+                    <li style="padding: 8px; border: 1px solid #444; margin: 4px 0; display: flex; justify-content: space-between; align-items: center; background: #333;">
+                        <div>
+                            <strong>${backup.date}</strong><br>
+                            <small style="color: #888;">${backup.filename}</small>
+                        </div>
+                        <button onclick="window.app.deleteIndividualBackup('${backup.filename}')"
+                                style="background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8em;">
+                            Delete
+                        </button>
+                    </li>
+                `;
+            });
+
+            dialogHTML += '</ul>';
+
+            // Create a custom dialog
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7); z-index: 10000; display: flex;
+                align-items: center; justify-content: center;
+            `;
+
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: #2a2a2a; padding: 20px; border-radius: 8px;
+                max-width: 600px; width: 90%; color: white; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            `;
+            content.innerHTML = dialogHTML + '<br><button onclick="window.app.closeDeleteBackupDialog()" style="background: #666; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Cancel</button>';
+
+            dialog.appendChild(content);
+            document.body.appendChild(dialog);
+
+            this.currentDeleteBackupDialog = dialog;
+
+        } catch (error) {
+            console.error('Error showing delete backup dialog:', error);
+            alert('Error loading backup list.');
+        }
+    }
+
+    async deleteIndividualBackup(backupFilename) {
+        const warningMessage = `Are you sure you want to delete this backup?
+
+${backupFilename}
+
+This action cannot be undone.`;
+
+        if (!confirm(warningMessage)) {
+            return;
+        }
+
+        try {
+            await window.electronAPI.deleteBackup(backupFilename);
+            alert('Backup deleted successfully.');
+
+            // Close and reopen the dialog to refresh the list
+            this.closeDeleteBackupDialog();
+            this.showDeleteBackupDialog();
+
+        } catch (error) {
+            console.error('Error deleting backup:', error);
+            alert('Error deleting backup. Please try again.');
+        }
+    }
+
+    async deleteAllBackups() {
+        const warningMessage = `⚠️ WARNING: Delete ALL backups?
+
+This will permanently delete ALL backup files.
+This action cannot be undone.
+
+Are you absolutely sure?`;
+
+        if (!confirm(warningMessage)) {
+            return;
+        }
+
+        try {
+            const deletedCount = await window.electronAPI.deleteAllBackups();
+            alert(`Successfully deleted ${deletedCount} backup(s).`);
+
+            this.closeDeleteBackupDialog();
+
+        } catch (error) {
+            console.error('Error deleting all backups:', error);
+            alert('Error deleting backups. Please try again.');
+        }
+    }
+
+    closeDeleteBackupDialog() {
+        if (this.currentDeleteBackupDialog) {
+            document.body.removeChild(this.currentDeleteBackupDialog);
+            this.currentDeleteBackupDialog = null;
+        }
     }
 }
 

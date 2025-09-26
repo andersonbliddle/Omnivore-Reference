@@ -9,6 +9,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings management
   loadSettings: () => ipcRenderer.invoke('load-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+
+  // Backup management
+  getBackupList: () => ipcRenderer.invoke('get-backup-list'),
+  restoreFromBackup: (backupFilename) => ipcRenderer.invoke('restore-from-backup', backupFilename),
+  createManualBackup: () => ipcRenderer.invoke('create-manual-backup'),
+  deleteBackup: (backupFilename) => ipcRenderer.invoke('delete-backup', backupFilename),
+  deleteAllBackups: () => ipcRenderer.invoke('delete-all-backups'),
   
   // Fullscreen toggle
   toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
