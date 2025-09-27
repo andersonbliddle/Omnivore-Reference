@@ -122,55 +122,137 @@ class DrawingReferenceApp {
         this.tutorialContent = this.tutorialModal.querySelector('.tutorial-content');
         this.tutorialHighlight = this.tutorialModal.querySelector('.tutorial-highlight-area');
         this.tutorialOverlay = this.tutorialModal.querySelector('.tutorial-overlay-bg');
+        this.tutorialTagTooltip = document.getElementById('tutorial-tag-tooltip');
 
         // Tutorial state
         this.currentTutorialStep = 0;
         this.tutorialSteps = [
             {
                 title: "Welcome to Drawing Reference App",
-                text: "This app helps artists practice with timed drawing sessions. Let's walk through the main features to get you started!",
+                text: `
+                    <p>This app helps artists practice with timed drawing sessions. Let's walk through the main features:</p>
+                    <ul>
+                        <li>Add image collections from your directories</li>
+                        <li>Configure timer settings for each drawing</li>
+                        <li>Organize collections with tags and practice sets</li>
+                        <li>Start focused practice sessions with automatic progression</li>
+                    </ul>
+                `,
                 target: null,
                 position: "center"
             },
             {
                 title: "Adding Image Collections",
-                text: "This button lets you add directories containing your reference images. Click it to select folders with images you want to practice with.",
+                text: `
+                    <p>Click the <span class="tutorial-btn add-btn">Add Directory</span> button to select folders containing your reference images:</p>
+                    <ul>
+                        <li>Browse to any folder with images (JPG, PNG, WebP, etc.)</li>
+                        <li>The app automatically scans subdirectories</li>
+                        <li>Creates optimized thumbnails for fast loading</li>
+                        <li>Thumbnails show the first image from each collection</li>
+                    </ul>
+                `,
                 target: "#add-collection",
                 position: "bottom"
             },
             {
                 title: "Practice Sets",
-                text: "Practice Sets let you save and quickly load specific combinations of collections for different types of practice sessions. Save your current selection, then quickly switch between different practice routines.",
+                text: `
+                    <p>Save and quickly load specific combinations of collections for different practice routines:</p>
+                    <ul>
+                        <li><strong>Dropdown:</strong> Select from saved practice sets</li>
+                        <li><span class="tutorial-btn">Save</span> - Save current collection selection as a new set</li>
+                        <li><span class="tutorial-btn">Update</span> - Update the selected practice set with current selection</li>
+                        <li><span class="tutorial-btn danger">Delete</span> - Remove the selected practice set</li>
+                    </ul>
+                    <p>Perfect for switching between portrait studies, gesture drawing, or anatomy practice!</p>
+                `,
                 target: ".control-group.practice-sets",
                 position: "bottom"
             },
             {
                 title: "Session Timer & Length Settings",
-                text: "These controls let you set your timer duration (how long each image is shown) and session length (how many images per session). You can use the quick buttons for common times, or type custom values.",
+                text: `
+                    <p><strong>Timer (seconds):</strong> How long each image is displayed</p>
+                    <ul>
+                        <li><span class="tutorial-input">Input field</span> - Type custom duration (5-3600 seconds)</li>
+                        <li>Quick buttons: <span class="tutorial-btn">30s</span> <span class="tutorial-btn">1m</span> <span class="tutorial-btn">2m</span> <span class="tutorial-btn">5m</span> <span class="tutorial-btn">10m</span></li>
+                    </ul>
+                    <p><strong>Images per session:</strong> Total number of images to practice with</p>
+                    <ul>
+                        <li><span class="tutorial-input">Input field</span> - Type custom count (1-1000 images)</li>
+                        <li>Quick buttons: <span class="tutorial-btn">5</span> <span class="tutorial-btn">10</span> <span class="tutorial-btn">20</span> <span class="tutorial-btn">50</span> <span class="tutorial-btn">100</span></li>
+                    </ul>
+                `,
                 target: [".timer-controls .control-group:nth-child(2)", ".timer-controls .control-group:nth-child(3)"],
                 position: "left"
             },
             {
                 title: "Managing Collections",
-                text: "This area shows your image collections. You can select multiple collections by clicking on them - selected collections have a blue border.",
+                text: `
+                    <p>Your image collections are displayed as thumbnails. Here's how to work with them:</p>
+                    <ul>
+                        <li><strong>Click</strong> to select/deselect collections (<span class="tutorial-color-blue">blue</span> border = selected)</li>
+                        <li><strong>Drag</strong> to select multiple collections at once</li>
+                        <li><strong>Right-click</strong> to open tag management menu</li>
+                        <li>Change icon size with: <span class="tutorial-btn">S</span> <span class="tutorial-btn">M</span> <span class="tutorial-btn">L</span></li>
+                        <li><span class="tutorial-btn secondary">Reorder</span> - Drag collections to reorganize</li>
+                    </ul>
+                `,
                 target: ".collections-section",
                 position: "top"
             },
             {
                 title: "Tag System & Right-Click Menu",
-                text: "Right-click on any collection thumbnail to open the tag management tooltip. This lets you add new tags, toggle existing tags on/off, and organize your collections by category (e.g., 'portraits', 'landscapes', 'anatomy'). Tags help you quickly find and group related collections.",
-                target: ".collections-list",
-                position: "top"
+                text: `
+                    <p>This tooltip appears when you right-click any collection thumbnail:</p>
+                    <ul>
+                        <li><strong>Current Tags:</strong> Click existing tags to toggle them on/off</li>
+                        <li><strong>Add New Tag:</strong> Type in <span class="tutorial-input">text field</span> and click <span class="tutorial-btn">Add</span></li>
+                        <li><strong>Organization:</strong> Use tags like "portraits", "landscapes", "anatomy"</li>
+                        <li><span class="tutorial-btn secondary">Close</span> - Close the tag menu</li>
+                    </ul>
+                    <p>Tags help you quickly filter and organize large collections!</p>
+                `,
+                target: "#tutorial-tag-tooltip",
+                position: "right",
+                showTagTooltip: true
             },
             {
                 title: "Filtering Collections",
-                text: "Use these filters to find specific collections. Search by name in the text box, or click on tags to filter by category. Left-click tags to include them (blue), right-click to exclude them (red) from your current view.",
+                text: `
+                    <p>Use these controls to find specific collections:</p>
+                    <ul>
+                        <li><span class="tutorial-input">Search box</span> - Type to filter by collection name</li>
+                        <li><span class="tutorial-btn secondary">Regex</span> - Enable regular expression search</li>
+                        <li><strong>Tag Filters:</strong> Click tags to filter collections</li>
+                        <li><strong>Left-click tag</strong> = Include (<span class="tutorial-color-blue">blue</span>) | <strong>Right-click tag</strong> = Exclude (<span class="tutorial-color-red">red</span>)</li>
+                        <li><span class="tutorial-btn secondary">Clear Filters</span> - Reset all filters</li>
+                    </ul>
+                    <p>Selection buttons work on filtered results:</p>
+                    <ul>
+                        <li><span class="tutorial-btn secondary">Select All</span> / <span class="tutorial-btn secondary">Deselect All</span></li>
+                        <li><span class="tutorial-btn secondary">Select Filtered</span> / <span class="tutorial-btn secondary">Deselect Filtered</span></li>
+                    </ul>
+                `,
                 target: ".tag-filter-section",
                 position: "bottom"
             },
             {
                 title: "Starting Your Practice",
-                text: "Once you've selected collections and configured your timer, click 'Start Session' to begin. The app will show images full-screen with a countdown timer. Ready to start drawing!",
+                text: `
+                    <p>Ready to start drawing? Here's how sessions work:</p>
+                    <ul>
+                        <li>Select collections and configure your timer settings</li>
+                        <li>Click <span class="tutorial-btn">Start Session</span> to begin</li>
+                        <li>Images display full-screen with countdown timer</li>
+                        <li>Menu automatically hides for distraction-free practice</li>
+                        <li>Use overlay controls: <span class="tutorial-btn secondary">← Previous</span> <span class="tutorial-btn">Pause</span> <span class="tutorial-btn secondary">Next →</span></li>
+                        <li>Timer changes color: normal → <span class="tutorial-color-yellow">yellow</span> (30s) → <span class="tutorial-color-red">red</span> (10s)</li>
+                        <li><span class="tutorial-btn danger">End Session</span> returns to main menu</li>
+                    </ul>
+                    <p>Happy drawing! 🎨</p>
+                `,
                 target: "#start-session",
                 position: "bottom"
             }
@@ -2678,10 +2760,14 @@ Are you absolutely sure?`;
         this.currentTutorialStep = 0;
         this.updateTutorialDisplay();
         this.tutorialModal.style.display = 'block';
+        this.tutorialModal.classList.add('active');
     }
 
     closeTutorial() {
         this.tutorialModal.style.display = 'none';
+        this.tutorialModal.classList.remove('active');
+        // Hide any tutorial-specific tooltips
+        this.hideTagTooltipForTutorial();
         // Mark tutorial as seen
         window.electronAPI.send('set-tutorial-seen');
     }
@@ -2705,7 +2791,7 @@ Are you absolutely sure?`;
     updateTutorialDisplay() {
         const step = this.tutorialSteps[this.currentTutorialStep];
         this.tutorialTitle.textContent = step.title;
-        this.tutorialText.textContent = step.text;
+        this.tutorialText.innerHTML = step.text; // Changed to innerHTML to support HTML content
         this.tutorialStepCounter.textContent = `${this.currentTutorialStep + 1} / ${this.tutorialSteps.length}`;
 
         // Update button states
@@ -2724,6 +2810,14 @@ Are you absolutely sure?`;
     positionTutorial(step) {
         // Clear previous positioning classes
         this.tutorialContent.className = 'tutorial-content';
+
+        // Handle special tutorial actions
+        console.log('Tutorial step:', step.title, 'showTagTooltip:', step.showTagTooltip);
+        if (step.showTagTooltip) {
+            this.showTagTooltipForTutorial();
+        } else {
+            this.hideTagTooltipForTutorial();
+        }
 
         if (!step.target || step.position === 'center') {
             // Center the modal for welcome/general steps
@@ -2812,6 +2906,57 @@ Are you absolutely sure?`;
         )`;
 
         this.tutorialOverlay.style.clipPath = clipPath;
+    }
+
+    showTagTooltipForTutorial() {
+        console.log('showTagTooltipForTutorial called');
+        console.log('tutorialTagTooltip element:', this.tutorialTagTooltip);
+
+        if (!this.tutorialTagTooltip) {
+            console.error('Tutorial tag tooltip element not found!');
+            return;
+        }
+
+        // Show the dedicated tutorial tooltip
+        this.tutorialTagTooltip.style.display = 'block';
+        this.tutorialTagTooltip.style.left = '200px';
+        this.tutorialTagTooltip.style.top = '250px';
+
+        console.log('Tutorial tag tooltip should now be visible');
+    }
+
+    hideTagTooltipForTutorial() {
+        console.log('hideTagTooltipForTutorial called');
+        if (this.tutorialTagTooltip) {
+            this.tutorialTagTooltip.style.display = 'none';
+        }
+    }
+
+    updateTagContextMenuContent(collection) {
+        // Update the header
+        const headerEl = this.tagContextMenu.querySelector('.context-menu-header');
+        if (headerEl) {
+            headerEl.textContent = 'Manage Tags';
+        }
+
+        // Show some example tags or empty state
+        const tagsListEl = this.tagContextMenu.querySelector('#current-tags-list');
+        if (tagsListEl) {
+            if (collection.tags && collection.tags.length > 0) {
+                tagsListEl.innerHTML = collection.tags.map(tag =>
+                    `<span class="current-tag selected">${tag}</span>`
+                ).join('');
+            } else {
+                tagsListEl.innerHTML = '<span class="no-tags-text">No tags assigned</span>';
+            }
+        }
+
+        // Clear new tag input
+        const newTagInput = this.tagContextMenu.querySelector('#new-tag-input');
+        if (newTagInput) {
+            newTagInput.value = '';
+            newTagInput.placeholder = 'Add new tag...';
+        }
     }
 
     positionModalNearRect(rect, position) {

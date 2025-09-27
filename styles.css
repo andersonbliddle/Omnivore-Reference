@@ -1799,10 +1799,11 @@ body:fullscreen .image-container img {
     width: 100%;
     height: 100%;
     z-index: 3000;
-    pointer-events: none;
+    pointer-events: auto; /* Changed to auto to block clicks */
 }
 
-.tutorial-modal * {
+.tutorial-modal .tutorial-content,
+.tutorial-modal .tutorial-highlight-area {
     pointer-events: auto;
 }
 
@@ -1931,6 +1932,181 @@ body:fullscreen .image-container img {
     color: #ccc;
     line-height: 1.6;
     font-size: 16px;
+}
+
+.tutorial-text ul {
+    margin: 12px 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.tutorial-text li {
+    margin: 8px 0;
+    padding-left: 20px;
+    position: relative;
+}
+
+.tutorial-text li::before {
+    content: "•";
+    color: #007acc;
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+.tutorial-btn {
+    display: inline-block;
+    background: #007acc;
+    color: white;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 500;
+    border: none;
+    margin: 0 1px;
+    vertical-align: baseline;
+}
+
+.tutorial-btn.secondary {
+    background: #666;
+}
+
+.tutorial-btn.danger {
+    background: #d32f2f;
+}
+
+.tutorial-btn.add-btn {
+    background: #28a745;
+}
+
+.tutorial-input {
+    display: inline-block;
+    background: #333;
+    color: #ccc;
+    padding: 1px 4px;
+    border: 1px solid #555;
+    border-radius: 2px;
+    font-size: 11px;
+    margin: 0 1px;
+    vertical-align: baseline;
+}
+
+.tutorial-color-blue {
+    color: #4a9eff;
+    font-weight: 500;
+}
+
+.tutorial-color-red {
+    color: #f44336;
+    font-weight: 500;
+}
+
+.tutorial-color-yellow {
+    color: #ffc107;
+    font-weight: 500;
+}
+
+.tutorial-color-green {
+    color: #28a745;
+    font-weight: 500;
+}
+
+/* Tutorial Tag Tooltip */
+.tutorial-tag-tooltip {
+    position: fixed;
+    background: #2d2d2d;
+    border: 1px solid #444;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    z-index: 3010;
+    min-width: 200px;
+    max-width: 300px;
+    pointer-events: auto;
+}
+
+.tutorial-tag-tooltip .context-menu-header {
+    background: #333;
+    color: #fff;
+    padding: 12px 16px;
+    border-bottom: 1px solid #444;
+    font-weight: 500;
+    border-radius: 8px 8px 0 0;
+}
+
+.tutorial-tag-tooltip .tag-list-container {
+    padding: 16px;
+}
+
+.tutorial-tag-tooltip .tag-section-title {
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.tutorial-tag-tooltip .tags-display {
+    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tutorial-tag-tooltip .current-tag {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tutorial-tag-tooltip .current-tag.selected {
+    background: #007acc;
+    color: white;
+}
+
+.tutorial-tag-tooltip .current-tag.unselected {
+    background: #444;
+    color: #ccc;
+}
+
+.tutorial-tag-tooltip .new-tag-input {
+    display: flex;
+    gap: 8px;
+}
+
+.tutorial-tag-tooltip .new-tag-input input {
+    flex: 1;
+    background: #444;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.tutorial-tag-tooltip .tag-add-btn {
+    background: #007acc;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.tutorial-tag-tooltip .context-menu-actions {
+    padding: 12px 16px;
+    border-top: 1px solid #444;
+    text-align: right;
+}
+
+.tutorial-tag-tooltip .context-close-btn {
+    background: #666;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
 }
 
 .tutorial-actions {
