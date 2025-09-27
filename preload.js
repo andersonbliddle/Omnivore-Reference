@@ -34,5 +34,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(eventName, (event, ...args) => callback(...args));
   },
 
+  // Tutorial management
+  send: (eventName, ...args) => ipcRenderer.send(eventName, ...args),
+
   // No keyboard shortcuts - button controls only
 });

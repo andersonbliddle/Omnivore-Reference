@@ -18,7 +18,8 @@ const defaultSettings = {
   collections: [],
   timerDuration: 60,
   sessionLength: 10,
-  windowBounds: { width: 1200, height: 800 }
+  windowBounds: { width: 1200, height: 800 },
+  hasSeenTutorial: false
 };
 
 // Ensure backup directory exists
@@ -379,6 +380,15 @@ function createMenu() {
               mainWindow.webContents.send('menu-show-delete-backup-dialog');
             }
           }
+        },
+        { type: 'separator' },
+        {
+          label: 'Show Tutorial',
+          click: async () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu-show-tutorial');
+            }
+          }
         }
       ]
     }
@@ -674,5 +684,16 @@ ipcMain.handle('clear-memory-cache', async () => {
   } catch (error) {
     console.error('Error clearing memory cache:', error);
     return 0;
+  }
+});
+
+// Tutorial management
+ipcMain.on('set-tutorial-seen', async () => {
+  try {
+    const settings = await loadSettings();
+    settings.hasSeenTutorial = true;
+    await saveSettings(settings);
+  } catch (error) {
+    console.error('Error setting tutorial as seen:', error);
   }
 });

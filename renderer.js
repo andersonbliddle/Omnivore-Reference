@@ -111,6 +111,52 @@ class DrawingReferenceApp {
         this.cancelSavePracticeSetBtn = document.getElementById('cancel-save-practice-set');
         this.practiceSetSelectedCount = document.getElementById('practice-set-selected-count');
 
+        // Tutorial elements
+        this.tutorialModal = document.getElementById('tutorial-modal');
+        this.tutorialTitle = document.getElementById('tutorial-title');
+        this.tutorialText = document.getElementById('tutorial-text');
+        this.tutorialStepCounter = document.getElementById('tutorial-step-counter');
+        this.tutorialSkipBtn = document.getElementById('tutorial-skip');
+        this.tutorialPrevBtn = document.getElementById('tutorial-prev');
+        this.tutorialNextBtn = document.getElementById('tutorial-next');
+        this.tutorialContent = this.tutorialModal.querySelector('.tutorial-content');
+        this.tutorialHighlight = this.tutorialModal.querySelector('.tutorial-highlight-area');
+
+        // Tutorial state
+        this.currentTutorialStep = 0;
+        this.tutorialSteps = [
+            {
+                title: "Welcome to Drawing Reference App",
+                text: "This app helps artists practice with timed drawing sessions. Let's walk through the main features to get you started!",
+                target: null,
+                position: "center"
+            },
+            {
+                title: "Adding Image Collections",
+                text: "This button lets you add directories containing your reference images. Click it to select folders with images you want to practice with.",
+                target: "#add-collection",
+                position: "bottom"
+            },
+            {
+                title: "Configuring Your Session",
+                text: "These controls let you set your timer duration (how long each image is shown) and session length (how many images per session). You can use the quick buttons for common times.",
+                target: ".timer-controls",
+                position: "left"
+            },
+            {
+                title: "Managing Collections",
+                text: "This area shows your image collections. You can tag them, filter them, select multiple collections, and organize them. Right-click on collections to add tags for better organization.",
+                target: ".collections-section",
+                position: "top"
+            },
+            {
+                title: "Starting Your Practice",
+                text: "Once you've selected collections and configured your timer, click 'Start Session' to begin. The app will show images full-screen with a countdown timer. Ready to start drawing!",
+                target: "#start-session",
+                position: "bottom"
+            }
+        ];
+
         // Debug: Check if practice set elements were found
         console.log('Practice sets elements initialization:', {
             dropdown: !!this.practiceSetsDropdown,
@@ -172,6 +218,24 @@ class DrawingReferenceApp {
             }
         };
         this.newTagInput.addEventListener('keypress', this.tagInputHandler);
+
+        // Tutorial event listeners
+        this.tutorialSkipBtn.addEventListener('click', () => this.closeTutorial());
+        this.tutorialPrevBtn.addEventListener('click', () => this.previousTutorialStep());
+        this.tutorialNextBtn.addEventListener('click', () => this.nextTutorialStep());
+        this.tutorialModal.addEventListener('click', (e) => {
+            if (e.target === this.tutorialModal) {
+                this.closeTutorial();
+            }
+        });
+
+        // Update tutorial positioning on window resize
+        window.addEventListener('resize', () => {
+            if (this.tutorialModal.style.display === 'block') {
+                const step = this.tutorialSteps[this.currentTutorialStep];
+                this.positionTutorial(step);
+            }
+        });
 
         // Click outside to close context menu
         document.addEventListener('click', (e) => {
@@ -2588,6 +2652,215 @@ Are you absolutely sure?`;
         await this.saveSettings();
         this.renderPracticeSetsDropdown();
         this.showBriefMessage('Practice set deleted successfully', 'success');
+    }
+
+    // Tutorial Methods
+    showTutorial() {
+        this.currentTutorialStep = 0;
+        this.updateTutorialDisplay();
+        this.tutorialModal.style.display = 'block';
+    }
+
+    closeTutorial() {
+        this.tutorialModal.style.display = 'none';
+        // Mark tutorial as seen
+        window.electronAPI.send('set-tutorial-seen');
+    }
+
+    nextTutorialStep() {
+        if (this.currentTutorialStep < this.tutorialSteps.length - 1) {
+            this.currentTutorialStep++;
+            this.updateTutorialDisplay();
+        } else {
+            this.closeTutorial();
+        }
+    }
+
+    previousTutorialStep() {
+        if (this.currentTutorialStep > 0) {
+            this.currentTutorialStep--;
+            this.updateTutorialDisplay();
+        }
+    }
+
+    updateTutorialDisplay() {
+        const step = this.tutorialSteps[this.currentTutorialStep];
+        this.tutorialTitle.textContent = step.title;
+        this.tutorialText.textContent = step.text;
+        this.tutorialStepCounter.textContent = `${this.currentTutorialStep + 1} / ${this.tutorialSteps.length}`;
+
+        // Update button states
+        this.tutorialPrevBtn.disabled = this.currentTutorialStep === 0;
+
+        if (this.currentTutorialStep === this.tutorialSteps.length - 1) {
+            this.tutorialNextBtn.textContent = 'Finish';
+        } else {
+            this.tutorialNextBtn.textContent = 'Next';
+        }
+
+        // Position tutorial content and highlight target element
+        this.positionTutorial(step);
+    }
+
+    positionTutorial(step) {
+        // Clear previous positioning classes
+        this.tutorialContent.className = 'tutorial-content';
+
+        if (!step.target || step.position === 'center') {
+            // Center the modal for welcome/general steps
+            this.tutorialContent.classList.add('centered');
+            this.tutorialHighlight.style.display = 'none';
+            return;
+        }
+
+        // Find target element
+        const targetElement = document.querySelector(step.target);
+        if (!targetElement) {
+            console.warn(`Tutorial target not found: ${step.target}`);
+            this.tutorialContent.classList.add('centered');
+            this.tutorialHighlight.style.display = 'none';
+            return;
+        }
+
+        // Show and position highlight
+        this.tutorialHighlight.style.display = 'block';
+        this.highlightElement(targetElement);
+
+        // Position tutorial content relative to highlighted element
+        this.positionModalNearElement(targetElement, step.position);
+    }
+
+    highlightElement(element) {
+        const rect = element.getBoundingClientRect();
+        const padding = 8;
+
+        this.tutorialHighlight.style.left = `${rect.left - padding}px`;
+        this.tutorialHighlight.style.top = `${rect.top - padding}px`;
+        this.tutorialHighlight.style.width = `${rect.width + padding * 2}px`;
+        this.tutorialHighlight.style.height = `${rect.height + padding * 2}px`;
+    }
+
+    positionModalNearElement(element, position) {
+        const rect = element.getBoundingClientRect();
+        const modalWidth = 400;
+        const modalHeight = this.tutorialContent.offsetHeight || 200;
+        const spacing = 20;
+        const viewport = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+
+        let left, top, arrowClass;
+
+        this.tutorialContent.classList.add('positioned');
+
+        switch (position) {
+            case 'top':
+                left = rect.left + rect.width / 2 - modalWidth / 2;
+                top = rect.top - modalHeight - spacing;
+                arrowClass = 'arrow-bottom';
+                break;
+            case 'bottom':
+                left = rect.left + rect.width / 2 - modalWidth / 2;
+                top = rect.bottom + spacing;
+                arrowClass = 'arrow-top';
+                break;
+            case 'left':
+                left = rect.left - modalWidth - spacing;
+                top = rect.top + rect.height / 2 - modalHeight / 2;
+                arrowClass = 'arrow-right';
+                break;
+            case 'right':
+                left = rect.right + spacing;
+                top = rect.top + rect.height / 2 - modalHeight / 2;
+                arrowClass = 'arrow-left';
+                break;
+            default:
+                left = rect.left + rect.width / 2 - modalWidth / 2;
+                top = rect.bottom + spacing;
+                arrowClass = 'arrow-top';
+        }
+
+        // Keep modal within viewport bounds
+        left = Math.max(20, Math.min(left, viewport.width - modalWidth - 20));
+        top = Math.max(20, Math.min(top, viewport.height - modalHeight - 20));
+
+        this.tutorialContent.style.left = `${left}px`;
+        this.tutorialContent.style.top = `${top}px`;
+        this.tutorialContent.classList.add(arrowClass);
+    }
+
+    // Settings Management
+    async loadSettings() {
+        try {
+            const settings = await window.electronAPI.loadSettings();
+            this.settings = settings;
+
+            // Apply settings to UI
+            this.timerDurationInput.value = settings.timerDuration || 60;
+            this.sessionLengthInput.value = settings.sessionLength || 10;
+            this.collections = settings.collections || [];
+            this.practiceSets = settings.practiceSets || {};
+
+            // Load tag data
+            this.rebuildTagBank();
+            this.renderCollections();
+            this.renderPracticeSetsDropdown();
+
+            // Check if this is first time and show tutorial
+            if (!settings.hasSeenTutorial) {
+                setTimeout(() => {
+                    this.showTutorial();
+                }, 1000); // Small delay to let the app finish loading
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    }
+
+    async saveSettings() {
+        try {
+            const settings = {
+                collections: this.collections,
+                timerDuration: parseInt(this.timerDurationInput.value),
+                sessionLength: parseInt(this.sessionLengthInput.value),
+                iconSize: this.iconSize,
+                practiceSets: this.practiceSets,
+                hasSeenTutorial: this.settings.hasSeenTutorial || false
+            };
+            await window.electronAPI.saveSettings(settings);
+            this.settings = settings;
+        } catch (error) {
+            console.error('Error saving settings:', error);
+        }
+    }
+
+    // Menu Event Handlers
+    bindMenuEvents() {
+        // Handle menu events from main process
+        window.electronAPI.onMenuEvent('menu-clear-cache', () => {
+            this.clearCache();
+        });
+
+        window.electronAPI.onMenuEvent('menu-add-directory', () => {
+            this.addCollection();
+        });
+
+        window.electronAPI.onMenuEvent('menu-show-message', async (message) => {
+            await this.showAlert(message);
+        });
+
+        window.electronAPI.onMenuEvent('menu-show-backup-dialog', () => {
+            this.showBackupDialog();
+        });
+
+        window.electronAPI.onMenuEvent('menu-show-delete-backup-dialog', () => {
+            this.showDeleteBackupDialog();
+        });
+
+        window.electronAPI.onMenuEvent('menu-show-tutorial', () => {
+            this.showTutorial();
+        });
     }
 }
 
