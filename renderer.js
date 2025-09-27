@@ -121,6 +121,7 @@ class DrawingReferenceApp {
         this.tutorialNextBtn = document.getElementById('tutorial-next');
         this.tutorialContent = this.tutorialModal.querySelector('.tutorial-content');
         this.tutorialHighlight = this.tutorialModal.querySelector('.tutorial-highlight-area');
+        this.tutorialOverlay = this.tutorialModal.querySelector('.tutorial-overlay-bg');
 
         // Tutorial state
         this.currentTutorialStep = 0;
@@ -138,16 +139,34 @@ class DrawingReferenceApp {
                 position: "bottom"
             },
             {
-                title: "Configuring Your Session",
-                text: "These controls let you set your timer duration (how long each image is shown) and session length (how many images per session). You can use the quick buttons for common times.",
-                target: ".timer-controls",
+                title: "Practice Sets",
+                text: "Practice Sets let you save and quickly load specific combinations of collections for different types of practice sessions. Save your current selection, then quickly switch between different practice routines.",
+                target: ".control-group.practice-sets",
+                position: "bottom"
+            },
+            {
+                title: "Session Timer & Length Settings",
+                text: "These controls let you set your timer duration (how long each image is shown) and session length (how many images per session). You can use the quick buttons for common times, or type custom values.",
+                target: [".timer-controls .control-group:nth-child(2)", ".timer-controls .control-group:nth-child(3)"],
                 position: "left"
             },
             {
                 title: "Managing Collections",
-                text: "This area shows your image collections. You can tag them, filter them, select multiple collections, and organize them. Right-click on collections to add tags for better organization.",
+                text: "This area shows your image collections. You can select multiple collections by clicking on them - selected collections have a blue border.",
                 target: ".collections-section",
                 position: "top"
+            },
+            {
+                title: "Tag System & Right-Click Menu",
+                text: "Right-click on any collection thumbnail to open the tag management tooltip. This lets you add new tags, toggle existing tags on/off, and organize your collections by category (e.g., 'portraits', 'landscapes', 'anatomy'). Tags help you quickly find and group related collections.",
+                target: ".collections-list",
+                position: "top"
+            },
+            {
+                title: "Filtering Collections",
+                text: "Use these filters to find specific collections. Search by name in the text box, or click on tags to filter by category. Left-click tags to include them (blue), right-click to exclude them (red) from your current view.",
+                target: ".tag-filter-section",
+                position: "bottom"
             },
             {
                 title: "Starting Your Practice",
@@ -2710,38 +2729,92 @@ Are you absolutely sure?`;
             // Center the modal for welcome/general steps
             this.tutorialContent.classList.add('centered');
             this.tutorialHighlight.style.display = 'none';
+            this.tutorialOverlay.style.clipPath = 'none';
             return;
         }
 
-        // Find target element
-        const targetElement = document.querySelector(step.target);
-        if (!targetElement) {
-            console.warn(`Tutorial target not found: ${step.target}`);
+        // Handle array of targets or single target
+        const targets = Array.isArray(step.target) ? step.target : [step.target];
+        const targetElements = targets.map(selector => document.querySelector(selector)).filter(el => el);
+
+        if (targetElements.length === 0) {
+            console.warn(`Tutorial targets not found:`, targets);
             this.tutorialContent.classList.add('centered');
             this.tutorialHighlight.style.display = 'none';
+            this.tutorialOverlay.style.clipPath = 'none';
             return;
         }
 
         // Show and position highlight
         this.tutorialHighlight.style.display = 'block';
-        this.highlightElement(targetElement);
+        this.highlightElements(targetElements);
 
-        // Position tutorial content relative to highlighted element
-        this.positionModalNearElement(targetElement, step.position);
+        // Create cutout in overlay
+        const boundingRect = this.getElementsBoundingRect(targetElements);
+        this.createOverlayCutout(boundingRect);
+
+        // Position tutorial content relative to highlighted elements
+        this.positionModalNearRect(boundingRect, step.position);
     }
 
-    highlightElement(element) {
-        const rect = element.getBoundingClientRect();
+    highlightElements(elements) {
+        const boundingRect = this.getElementsBoundingRect(elements);
         const padding = 8;
 
-        this.tutorialHighlight.style.left = `${rect.left - padding}px`;
-        this.tutorialHighlight.style.top = `${rect.top - padding}px`;
-        this.tutorialHighlight.style.width = `${rect.width + padding * 2}px`;
-        this.tutorialHighlight.style.height = `${rect.height + padding * 2}px`;
+        this.tutorialHighlight.style.left = `${boundingRect.left - padding}px`;
+        this.tutorialHighlight.style.top = `${boundingRect.top - padding}px`;
+        this.tutorialHighlight.style.width = `${boundingRect.width + padding * 2}px`;
+        this.tutorialHighlight.style.height = `${boundingRect.height + padding * 2}px`;
     }
 
-    positionModalNearElement(element, position) {
-        const rect = element.getBoundingClientRect();
+    getElementsBoundingRect(elements) {
+        if (elements.length === 1) {
+            return elements[0].getBoundingClientRect();
+        }
+
+        // Calculate bounding box for multiple elements
+        const rects = elements.map(el => el.getBoundingClientRect());
+        const minLeft = Math.min(...rects.map(r => r.left));
+        const minTop = Math.min(...rects.map(r => r.top));
+        const maxRight = Math.max(...rects.map(r => r.right));
+        const maxBottom = Math.max(...rects.map(r => r.bottom));
+
+        return {
+            left: minLeft,
+            top: minTop,
+            right: maxRight,
+            bottom: maxBottom,
+            width: maxRight - minLeft,
+            height: maxBottom - minTop
+        };
+    }
+
+    createOverlayCutout(rect) {
+        const padding = 8;
+        const left = rect.left - padding;
+        const top = rect.top - padding;
+        const right = rect.right + padding;
+        const bottom = rect.bottom + padding;
+
+        // Create a clip-path that covers everything except the highlighted area
+        // Using polygon points to create a cutout rectangle
+        const clipPath = `polygon(
+            0% 0%,
+            0% 100%,
+            ${left}px 100%,
+            ${left}px ${top}px,
+            ${right}px ${top}px,
+            ${right}px ${bottom}px,
+            ${left}px ${bottom}px,
+            ${left}px 100%,
+            100% 100%,
+            100% 0%
+        )`;
+
+        this.tutorialOverlay.style.clipPath = clipPath;
+    }
+
+    positionModalNearRect(rect, position) {
         const modalWidth = 400;
         const modalHeight = this.tutorialContent.offsetHeight || 200;
         const spacing = 20;

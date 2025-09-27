@@ -1814,6 +1814,7 @@ body:fullscreen .image-container img {
     height: 100%;
     background: rgba(0, 0, 0, 0.75);
     pointer-events: auto;
+    transition: clip-path 0.3s ease;
 }
 
 .tutorial-highlight-area {
@@ -1821,7 +1822,6 @@ body:fullscreen .image-container img {
     border: 3px solid #007acc;
     border-radius: 8px;
     box-shadow:
-        0 0 0 9999px rgba(0, 0, 0, 0.75),
         0 0 20px rgba(0, 122, 204, 0.8),
         inset 0 0 20px rgba(0, 122, 204, 0.3);
     transition: all 0.3s ease;
