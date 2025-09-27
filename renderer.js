@@ -1148,6 +1148,11 @@ class DrawingReferenceApp {
     }
 
     startDragSelection(e) {
+        // Don't start drag selection on right-click
+        if (e.button === 2) {
+            return;
+        }
+
         // Only prevent drag selection for very specific interactive elements
         if (this.isReorderMode || this.currentSession ||
             e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' ||
@@ -1200,8 +1205,8 @@ class DrawingReferenceApp {
         );
         const dragDuration = Date.now() - this.dragStartTime;
 
-        // If drag started on a collection and was a short drag (< 5 pixels, < 200ms), treat as click
-        if (this.dragStartedOnCollection && dragDistance < 5 && dragDuration < 200) {
+        // If drag started on a collection and was a short drag (< 5 pixels, < 100ms), treat as click
+        if (this.dragStartedOnCollection && dragDistance < 5 && dragDuration < 100) {
             this.isDragSelecting = false;
             this.removeSelectionRectangle();
 
