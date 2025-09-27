@@ -362,6 +362,34 @@ input, textarea, select {
     color: #fff;
 }
 
+/* Regex Toggle Button */
+.regex-toggle-btn {
+    background: #6c757d;
+    color: white;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    margin-left: 6px;
+    height: 28px;
+}
+
+.regex-toggle-btn:hover {
+    background: #545b62;
+}
+
+.regex-toggle-btn.active {
+    background: #4a9eff;
+    color: white;
+}
+
+.regex-toggle-btn.active:hover {
+    background: #357abd;
+}
+
 /* Practice Sets Styles */
 .practice-sets {
     min-width: 300px;

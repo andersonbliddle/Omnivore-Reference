@@ -11,6 +11,7 @@ class DrawingReferenceApp {
         this.selectedTags = new Set(); // Currently filtered tags (included)
         this.excludedTags = new Set(); // Currently excluded tags
         this.textFilter = ''; // Current text filter
+        this.useRegex = false; // Whether to use regex for text filtering
         this.practiceSets = {}; // Practice sets storage: {name: {collections: [ids], createdAt: timestamp}}
         this.currentPracticeSet = null; // Currently selected practice set name
         
@@ -82,7 +83,7 @@ class DrawingReferenceApp {
 
         // Text filter elements
         this.textFilterInput = document.getElementById('text-filter-input');
-        this.clearTextFilterBtn = document.getElementById('clear-text-filter');
+        this.regexToggle = document.getElementById('regex-toggle');
 
         // Mass tag management elements
         this.addTagToSelectedBtn = document.getElementById('add-tag-to-selected');
@@ -163,7 +164,7 @@ class DrawingReferenceApp {
                 this.clearTextFilter();
             }
         });
-        this.clearTextFilterBtn.addEventListener('click', () => this.clearTextFilter());
+        this.regexToggle.addEventListener('click', () => this.toggleRegexMode());
         // Create a reusable handler for the tag input
         this.tagInputHandler = async (e) => {
             if (e.key === 'Enter') {
@@ -430,7 +431,11 @@ class DrawingReferenceApp {
                 this.timerDurationInput.value = this.settings.timerDuration || 60;
                 this.sessionLengthInput.value = this.settings.sessionLength || 10;
                 this.iconSize = this.settings.iconSize || 'small';
+                this.useRegex = this.settings.useRegex || false;
                 this.updateIconSizeButtons();
+
+                // Restore regex toggle state
+                this.updateRegexButtonState();
 
                 // Restore collections after icon size is applied
                 this.collections = this.settings.collections || [];
@@ -462,6 +467,7 @@ class DrawingReferenceApp {
                     timerDuration: parseInt(this.timerDurationInput.value),
                     sessionLength: parseInt(this.sessionLengthInput.value),
                     iconSize: this.iconSize,
+                    useRegex: this.useRegex,
                     practiceSets: this.practiceSets
                 };
 
@@ -867,12 +873,15 @@ class DrawingReferenceApp {
     }
 
     startTimer() {
+        // Clear any existing timer first to prevent multiple timers
+        this.stopTimer();
+
         this.timer = setInterval(() => {
             if (!this.isPaused && this.currentSession) {
                 this.currentSession.timeRemaining--;
                 this.updateTimerDisplay();
                 this.updateSessionTimer();
-                
+
                 if (this.currentSession.timeRemaining <= 0) {
                     this.nextImage();
                 }
@@ -1305,10 +1314,25 @@ class DrawingReferenceApp {
 
         // Apply text filter first
         if (this.textFilter && this.textFilter.trim().length > 0) {
-            const filterText = this.textFilter.toLowerCase();
-            filteredCollections = filteredCollections.filter(collection =>
-                collection.name.toLowerCase().includes(filterText)
-            );
+            if (this.useRegex) {
+                try {
+                    const regex = new RegExp(this.textFilter, 'i'); // Case insensitive
+                    filteredCollections = filteredCollections.filter(collection =>
+                        regex.test(collection.name)
+                    );
+                } catch (e) {
+                    // Invalid regex - fall back to text search
+                    const filterText = this.textFilter.toLowerCase();
+                    filteredCollections = filteredCollections.filter(collection =>
+                        collection.name.toLowerCase().includes(filterText)
+                    );
+                }
+            } else {
+                const filterText = this.textFilter.toLowerCase();
+                filteredCollections = filteredCollections.filter(collection =>
+                    collection.name.toLowerCase().includes(filterText)
+                );
+            }
         }
 
         // Apply inclusion filter (all selected tags must be present)
@@ -1710,9 +1734,28 @@ class DrawingReferenceApp {
         this.renderCollections();
     }
 
+    toggleRegexMode() {
+        // Preserve the current text filter value
+        const currentText = this.textFilterInput.value;
+        this.useRegex = !this.useRegex;
+        this.updateRegexButtonState();
+        this.saveSettings();
+        // Ensure the text filter is preserved
+        this.textFilter = currentText.trim();
+        this.textFilterInput.value = currentText;
+        this.renderCollections();
+    }
+
+    updateRegexButtonState() {
+        if (this.useRegex) {
+            this.regexToggle.classList.add('active');
+        } else {
+            this.regexToggle.classList.remove('active');
+        }
+    }
+
     updateTextFilterUI() {
         const hasTextFilter = this.textFilter.length > 0;
-        this.clearTextFilterBtn.style.display = hasTextFilter ? 'block' : 'none';
 
         // Update clear filters button text to reflect all filter types
         const hasAnyFilter = hasTextFilter || this.selectedTags.size > 0 || this.excludedTags.size > 0;
