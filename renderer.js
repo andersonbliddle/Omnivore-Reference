@@ -137,6 +137,7 @@ class DrawingReferenceApp {
                         <li>Organize collections with tags and practice sets</li>
                         <li>Start focused practice sessions with automatic progression</li>
                     </ul>
+                    <p><strong>💡 Tip:</strong> For the best experience, consider maximizing the window or using fullscreen mode to see more collections at once!</p>
                 `,
                 target: null,
                 position: "center"
@@ -219,6 +220,21 @@ class DrawingReferenceApp {
                 showTagTooltip: true
             },
             {
+                title: "Mass Tag Management",
+                text: `
+                    <p>When you have collections selected, these floating buttons appear to manage tags in bulk:</p>
+                    <ul>
+                        <li><span class="tutorial-btn secondary">Add Tag</span> - Add the same tag to all selected collections</li>
+                        <li><span class="tutorial-btn secondary">Remove Tag</span> - Remove existing tags from all selected collections</li>
+                        <li><strong>Add Tag Dialog:</strong> Type new tag name or click existing tags to apply</li>
+                        <li><strong>Remove Tag Dialog:</strong> Select which tags to remove from all selected collections</li>
+                        <li>Perfect for organizing large batches of similar content!</li>
+                    </ul>
+                `,
+                target: ".floating-buttons .floating-left",
+                position: "top"
+            },
+            {
                 title: "Filtering Collections",
                 text: `
                     <p>Use these controls to find specific collections:</p>
@@ -251,10 +267,27 @@ class DrawingReferenceApp {
                         <li>Timer changes color: normal → <span class="tutorial-color-yellow">yellow</span> (30s) → <span class="tutorial-color-red">red</span> (10s)</li>
                         <li><span class="tutorial-btn danger">End Session</span> returns to main menu</li>
                     </ul>
-                    <p>Happy drawing! 🎨</p>
                 `,
                 target: "#start-session",
                 position: "bottom"
+            },
+            {
+                title: "Tools Menu & Maintenance",
+                text: `
+                    <p>The <strong>Tools</strong> menu in the menu bar contains helpful maintenance options:</p>
+                    <ul>
+                        <li><strong>Clear Cache</strong> - Clears memory cache and forces thumbnail regeneration</li>
+                        <li><strong>Cleanup Old Thumbnails</strong> - Removes unused thumbnail files from disk</li>
+                        <li><strong>Create Backup</strong> - Creates a timestamped backup of your settings</li>
+                        <li><strong>Restore Backup</strong> - Restore settings from a previous backup file</li>
+                        <li><strong>Delete Backups</strong> - Manage and remove backup files</li>
+                        <li><strong>Show Tutorial</strong> - Replay this guided walkthrough anytime</li>
+                    </ul>
+                    <p>These tools help keep your app running smoothly and protect your settings. Happy drawing! 🎨</p>
+                `,
+                target: "tools-menu",
+                position: "bottom",
+                customTarget: true
             }
         ];
 
@@ -614,7 +647,13 @@ class DrawingReferenceApp {
 
                 // Restore practice sets
                 this.practiceSets = this.settings.practiceSets || {};
+                this.currentPracticeSet = this.settings.currentPracticeSet || null;
                 this.renderPracticeSetsDropdown();
+
+                // Restore the selected practice set in the dropdown
+                if (this.currentPracticeSet && this.practiceSets[this.currentPracticeSet]) {
+                    this.practiceSetsDropdown.value = this.currentPracticeSet;
+                }
 
                 this.renderCollections();
             }
@@ -633,7 +672,8 @@ class DrawingReferenceApp {
                     sessionLength: parseInt(this.sessionLengthInput.value),
                     iconSize: this.iconSize,
                     useRegex: this.useRegex,
-                    practiceSets: this.practiceSets
+                    practiceSets: this.practiceSets,
+                    currentPracticeSet: this.currentPracticeSet
                 };
 
                 await window.electronAPI.saveSettings(this.settings);
@@ -2683,6 +2723,7 @@ Are you absolutely sure?`;
         if (!setName || !this.practiceSets[setName]) {
             this.currentPracticeSet = null;
             this.updatePracticeSetButtons();
+            await this.saveSettings();
             return;
         }
 
@@ -2708,6 +2749,9 @@ Are you absolutely sure?`;
         // Update UI
         this.renderCollections();
         this.updatePracticeSetButtons();
+
+        // Save the current practice set selection
+        await this.saveSettings();
 
         // Show info if some collections were missing
         if (foundCount < practiceSet.collections.length) {
@@ -2827,6 +2871,13 @@ Are you absolutely sure?`;
             return;
         }
 
+        // Handle custom targets (like Tools menu in menu bar)
+        if (step.customTarget && step.target === 'tools-menu') {
+            this.highlightToolsMenuArea();
+            this.positionModalForToolsMenu(step.position);
+            return;
+        }
+
         // Handle array of targets or single target
         const targets = Array.isArray(step.target) ? step.target : [step.target];
         const targetElements = targets.map(selector => document.querySelector(selector)).filter(el => el);
@@ -2932,6 +2983,69 @@ Are you absolutely sure?`;
         }
     }
 
+    highlightToolsMenuArea() {
+        // Show highlight for the Tools menu area in the menu bar
+        this.tutorialHighlight.style.display = 'block';
+
+        // Position highlight in the top-left area where Tools menu typically appears
+        // Adjust based on typical menu bar layout: File, Edit, View, Tools
+        const toolsMenuRect = {
+            left: 120,  // Approximate position after File, Edit, View
+            top: 0,     // Top of window
+            width: 50,  // Width of "Tools" text
+            height: 25  // Height of menu bar
+        };
+
+        const padding = 8;
+        this.tutorialHighlight.style.left = `${toolsMenuRect.left - padding}px`;
+        this.tutorialHighlight.style.top = `${toolsMenuRect.top - padding}px`;
+        this.tutorialHighlight.style.width = `${toolsMenuRect.width + padding * 2}px`;
+        this.tutorialHighlight.style.height = `${toolsMenuRect.height + padding * 2}px`;
+
+        // Create overlay cutout for the Tools menu area
+        this.createToolsMenuCutout(toolsMenuRect, padding);
+    }
+
+    createToolsMenuCutout(rect, padding) {
+        const left = rect.left - padding;
+        const top = rect.top - padding;
+        const right = rect.left + rect.width + padding;
+        const bottom = rect.top + rect.height + padding;
+
+        // Create a clip-path that covers everything except the Tools menu area
+        const clipPath = `polygon(
+            0% 0%,
+            0% 100%,
+            ${left}px 100%,
+            ${left}px ${top}px,
+            ${right}px ${top}px,
+            ${right}px ${bottom}px,
+            ${left}px ${bottom}px,
+            ${left}px 100%,
+            100% 100%,
+            100% 0%
+        )`;
+
+        this.tutorialOverlay.style.clipPath = clipPath;
+    }
+
+    positionModalForToolsMenu(position) {
+        // Position the tutorial modal below the Tools menu area
+        const modalRect = this.tutorialContent.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+
+        // Position below the Tools menu with some margin
+        const targetTop = 50; // Below menu bar
+        const targetLeft = Math.max(20, Math.min(140, windowWidth - modalRect.width - 20));
+
+        this.tutorialContent.style.position = 'fixed';
+        this.tutorialContent.style.left = `${targetLeft}px`;
+        this.tutorialContent.style.top = `${targetTop}px`;
+        this.tutorialContent.classList.remove('centered');
+        this.tutorialContent.classList.add(position);
+    }
+
+
     updateTagContextMenuContent(collection) {
         // Update the header
         const headerEl = this.tagContextMenu.querySelector('.context-menu-header');
@@ -3008,50 +3122,6 @@ Are you absolutely sure?`;
         this.tutorialContent.classList.add(arrowClass);
     }
 
-    // Settings Management
-    async loadSettings() {
-        try {
-            const settings = await window.electronAPI.loadSettings();
-            this.settings = settings;
-
-            // Apply settings to UI
-            this.timerDurationInput.value = settings.timerDuration || 60;
-            this.sessionLengthInput.value = settings.sessionLength || 10;
-            this.collections = settings.collections || [];
-            this.practiceSets = settings.practiceSets || {};
-
-            // Load tag data
-            this.rebuildTagBank();
-            this.renderCollections();
-            this.renderPracticeSetsDropdown();
-
-            // Check if this is first time and show tutorial
-            if (!settings.hasSeenTutorial) {
-                setTimeout(() => {
-                    this.showTutorial();
-                }, 1000); // Small delay to let the app finish loading
-            }
-        } catch (error) {
-            console.error('Error loading settings:', error);
-        }
-    }
-
-    async saveSettings() {
-        try {
-            const settings = {
-                collections: this.collections,
-                timerDuration: parseInt(this.timerDurationInput.value),
-                sessionLength: parseInt(this.sessionLengthInput.value),
-                iconSize: this.iconSize,
-                practiceSets: this.practiceSets,
-                hasSeenTutorial: this.settings.hasSeenTutorial || false
-            };
-            await window.electronAPI.saveSettings(settings);
-            this.settings = settings;
-        } catch (error) {
-            console.error('Error saving settings:', error);
-        }
-    }
 
     // Menu Event Handlers
     bindMenuEvents() {

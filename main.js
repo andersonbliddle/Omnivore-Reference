@@ -697,3 +697,4 @@ ipcMain.on('set-tutorial-seen', async () => {
     console.error('Error setting tutorial as seen:', error);
   }
 });
+
