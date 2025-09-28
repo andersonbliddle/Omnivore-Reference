@@ -3123,33 +3123,6 @@ Are you absolutely sure?`;
     }
 
 
-    // Menu Event Handlers
-    bindMenuEvents() {
-        // Handle menu events from main process
-        window.electronAPI.onMenuEvent('menu-clear-cache', () => {
-            this.clearCache();
-        });
-
-        window.electronAPI.onMenuEvent('menu-add-directory', () => {
-            this.addCollection();
-        });
-
-        window.electronAPI.onMenuEvent('menu-show-message', async (message) => {
-            await this.showAlert(message);
-        });
-
-        window.electronAPI.onMenuEvent('menu-show-backup-dialog', () => {
-            this.showBackupDialog();
-        });
-
-        window.electronAPI.onMenuEvent('menu-show-delete-backup-dialog', () => {
-            this.showDeleteBackupDialog();
-        });
-
-        window.electronAPI.onMenuEvent('menu-show-tutorial', () => {
-            this.showTutorial();
-        });
-    }
 }
 
 // Initialize the app when the DOM is loaded
