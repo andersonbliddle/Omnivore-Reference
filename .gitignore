@@ -1,0 +1,16 @@
+.claudeignore
+dist/*
+node_modules/*
+thumbnail_cache/*
+CLAUDE.md
+/settings.json
+/settings_backups/
+/STATUS.md
+/BACKLOG.md
+/DECISIONS.md
+/GOTCHAS.md
+/HUMAN.md
+/SPEC.md
+/plans/
+/worklogs/
+/.notes.git/
