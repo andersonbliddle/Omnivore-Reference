@@ -57,3 +57,11 @@ test('server: path traversal outside web root is refused', async () => {
     await app.close();
   }
 });
+
+test('server: buildApp exposes app.db and closes it on close', async () => {
+  const app = buildApp();
+  assert.ok(app.db);
+  assert.strictEqual(app.db.open, true);
+  await app.close();
+  assert.strictEqual(app.db.open, false);
+});
