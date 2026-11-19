@@ -39,7 +39,8 @@
       "main.js",
       "renderer.js",
       "index.html",
-      "styles.css"
+      "styles.css",
+      "shared/**/*"
     ]
   }
 }

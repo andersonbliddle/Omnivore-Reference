@@ -10,7 +10,14 @@ module.exports = [
   },
   {
     files: ['renderer.js'],
-    languageOptions: { sourceType: 'script', globals: { ...globals.browser } },
+    languageOptions: {
+      sourceType: 'script',
+      globals: { ...globals.browser, OmnivoreFilters: 'readonly', OmnivoreSession: 'readonly' },
+    },
+  },
+  {
+    files: ['shared/**/*.js'],
+    languageOptions: { sourceType: 'script', globals: { ...globals.node, ...globals.browser } },
   },
   {
     rules: {

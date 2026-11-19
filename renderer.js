@@ -1028,23 +1028,7 @@ class DrawingReferenceApp {
 
 
     getEnabledImages() {
-        const enabledCollections = this.collections.filter(c => c.enabled);
-        const allImages = [];
-        
-        enabledCollections.forEach(collection => {
-            allImages.push(...collection.images);
-        });
-        
-        return allImages;
-    }
-
-    shuffleArray(array) {
-        const shuffled = [...array];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled;
+        return OmnivoreSession.getEnabledImages(this.collections);
     }
 
     async startSession() {
@@ -1059,8 +1043,7 @@ class DrawingReferenceApp {
         const sessionLength = Math.min(parseInt(this.sessionLengthInput.value), availableImages.length);
         
         // Shuffle and select images for this session
-        const shuffledImages = this.shuffleArray(availableImages);
-        this.sessionImages = shuffledImages.slice(0, sessionLength);
+        this.sessionImages = OmnivoreSession.pickSessionImages(availableImages, sessionLength);
         
         this.currentSession = {
             timerDuration: timerDuration,
@@ -1519,47 +1502,12 @@ class DrawingReferenceApp {
     }
 
     getFilteredCollections() {
-        // Return currently filtered collections (same logic as in renderCollections)
-        let filteredCollections = this.collections;
-
-        // Apply text filter first
-        if (this.textFilter && this.textFilter.trim().length > 0) {
-            if (this.useRegex) {
-                try {
-                    const regex = new RegExp(this.textFilter, 'i'); // Case insensitive
-                    filteredCollections = filteredCollections.filter(collection =>
-                        regex.test(collection.name)
-                    );
-                } catch (e) {
-                    // Invalid regex - fall back to text search
-                    const filterText = this.textFilter.toLowerCase();
-                    filteredCollections = filteredCollections.filter(collection =>
-                        collection.name.toLowerCase().includes(filterText)
-                    );
-                }
-            } else {
-                const filterText = this.textFilter.toLowerCase();
-                filteredCollections = filteredCollections.filter(collection =>
-                    collection.name.toLowerCase().includes(filterText)
-                );
-            }
-        }
-
-        // Apply inclusion filter (all selected tags must be present)
-        if (this.selectedTags.size > 0) {
-            filteredCollections = filteredCollections.filter(collection =>
-                [...this.selectedTags].every(tag => collection.tags.includes(tag))
-            );
-        }
-
-        // Apply exclusion filter (excluded tags must not be present)
-        if (this.excludedTags.size > 0) {
-            filteredCollections = filteredCollections.filter(collection =>
-                ![...this.excludedTags].some(tag => collection.tags.includes(tag))
-            );
-        }
-
-        return filteredCollections;
+        return OmnivoreFilters.filterCollections(this.collections, {
+            textFilter: this.textFilter,
+            useRegex: this.useRegex,
+            includeTags: this.selectedTags,
+            excludeTags: this.excludedTags
+        });
     }
 
     selectAllCollectionsTrue() {
@@ -1602,11 +1550,7 @@ class DrawingReferenceApp {
 
     rebuildTagBank() {
         this.allTags.clear();
-        this.collections.forEach(collection => {
-            if (collection.tags) {
-                collection.tags.forEach(tag => this.allTags.add(tag));
-            }
-        });
+        OmnivoreFilters.collectTags(this.collections).forEach(tag => this.allTags.add(tag));
     }
 
     addTagToCollection(collectionId, tag) {

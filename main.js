@@ -13,14 +13,7 @@ const backupDir = path.join(__dirname, 'settings_backups');
 // Thumbnail cache directory
 const thumbnailCacheDir = path.join(__dirname, 'thumbnail_cache');
 
-// Default settings
-const defaultSettings = {
-  collections: [],
-  timerDuration: 60,
-  sessionLength: 10,
-  windowBounds: { width: 1200, height: 800 },
-  hasSeenTutorial: false
-};
+const { DEFAULT_SETTINGS, parseSettings, mergeWithDefaults } = require('./shared/settings');
 
 // Ensure backup directory exists
 async function ensureBackupDir() {
@@ -60,11 +53,10 @@ async function createBackup() {
 async function loadSettings() {
   try {
     const data = await fs.readFile(settingsPath, 'utf8');
-    const settings = JSON.parse(data);
-    return { ...defaultSettings, ...settings };
+    return parseSettings(data);
   } catch (error) {
-    // File doesn't exist or is invalid, return defaults
-    return defaultSettings;
+    // File doesn't exist or is unreadable, return defaults
+    return structuredClone(DEFAULT_SETTINGS);
   }
 }
 
@@ -119,7 +111,7 @@ async function restoreFromBackup(backupFilename) {
     // Restore the backup
     await fs.copyFile(backupPath, settingsPath);
 
-    return { ...defaultSettings, ...settings };
+    return mergeWithDefaults(settings);
   } catch (error) {
     console.error('Error restoring from backup:', error);
     throw error;
